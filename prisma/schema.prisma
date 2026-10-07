@@ -1,0 +1,55 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Post {
+  id        String   @id @default(cuid())
+  title     String
+  content   String?
+  published Boolean  @default(false)
+  authorId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Sky observation session pairing model
+model SkySession {
+  id           String   @id @default(cuid())
+  code         String   @unique // 6-digit pairing code (no dash)
+  hostPeerId   String?  // socket id of host
+  clientPeerId String?  // socket id of joined client
+  status       String   @default("waiting") // waiting | paired | expired | closed
+  paired       Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  expiresAt    DateTime // TTL
+  updatedAt    DateTime @updatedAt
+
+  @@index([code, status])
+}
+
+// Optional: log of sky sync events / meteor observations (extension)
+model SkyEvent {
+  id        String   @id @default(cuid())
+  sessionId String
+  type      String // meteor | satellite | planet | note
+  payload   String // JSON stringified
+  createdAt DateTime @default(now())
+
+  @@index([sessionId])
+}
