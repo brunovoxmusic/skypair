@@ -1,0 +1,8 @@
+{
+  "projectId": "red-cloud-01431365",
+  "branch": "production",
+  "database": "neondb",
+  "role": "neondb_owner",
+  "host": "ep-winter-leaf-b2sfpdro-pooler.c-6.eu-central-1.aws.neon.tech",
+  "region": "eu-central-1"
+}
