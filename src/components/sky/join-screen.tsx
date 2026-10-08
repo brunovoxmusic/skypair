@@ -89,27 +89,28 @@ export function JoinScreen({ onBack, onSubmit, loading, error, initialCode }: Jo
               <TabsContent value="manual" className="space-y-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Zadajte 6‑miestny kód</label>
-                  <InputOTP
+                  <Input
+                    value={rawCode}
+                    onChange={(e) => {
+                      // Allow only A-Z and 0-9, max 6 chars, uppercase
+                      const cleaned = e.target.value
+                        .toUpperCase()
+                        .replace(/[^A-Z0-9]/g, '')
+                        .slice(0, 6)
+                      setRawCode(cleaned)
+                    }}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && canSubmit) handleManualSubmit() }}
+                    placeholder="ABC123"
                     maxLength={6}
-                    value={normalized}
-                    onChange={(v) => setRawCode(v)}
                     disabled={loading}
-                    pattern={/[^a-zA-Z0-9]/g}
-                  >
-                    <InputOTPGroup>
-                      <InputOTPSlot index={0} />
-                      <InputOTPSlot index={1} />
-                      <InputOTPSlot index={2} />
-                    </InputOTPGroup>
-                    <span className="px-1 text-muted-foreground">–</span>
-                    <InputOTPGroup>
-                      <InputOTPSlot index={3} />
-                      <InputOTPSlot index={4} />
-                      <InputOTPSlot index={5} />
-                    </InputOTPGroup>
-                  </InputOTP>
+                    className="font-mono text-2xl font-bold tracking-[0.3em] text-center h-14"
+                    autoComplete="one-time-code"
+                    inputMode="text"
+                    autoCapitalize="characters"
+                    spellCheck={false}
+                  />
                   <p className="text-xs text-muted-foreground">
-                    Formát: ABC‑123 (bez pomlčky pri zadávaní)
+                    Formát: ABC‑123 (bez pomlčky pri zadávaní) — {normalized.length}/6 znakov
                   </p>
                 </div>
                 <Button

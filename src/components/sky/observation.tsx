@@ -574,75 +574,72 @@ export function Observation(props: ObservationProps) {
             onLocate={(az, alt) => { setView({ az, alt }); setSelectedConstellation(null) }}
           />
           {/* Top overlay status bar */}
-          <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2 z-10 pointer-events-none">
-            <div className="flex items-center gap-2 flex-wrap">
+          <div className="absolute top-2 left-2 right-2 sm:top-3 sm:left-3 sm:right-3 flex items-center justify-between gap-1.5 z-10 pointer-events-none">
+            <div className="flex items-center gap-1.5 sm:gap-2">
               <Badge
                 variant="secondary"
-                className={`backdrop-blur ${peerPresent ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40' : 'bg-amber-500/15 text-amber-300 border-amber-400/40'}`}
+                className={`backdrop-blur text-[9px] sm:text-xs ${peerPresent ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40' : 'bg-amber-500/15 text-amber-300 border-amber-400/40'}`}
               >
-                <Radio className="w-3 h-3 mr-1" />
-                {peerPresent ? 'Peer pripojený' : 'Bez peera'}
+                <Radio className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-0.5" />
+                <span className="hidden sm:inline">{peerPresent ? 'Peer pripojený' : 'Bez peera'}</span>
+                <span className="sm:hidden">{peerPresent ? '●' : '○'}</span>
               </Badge>
-              <Badge variant="secondary" className="backdrop-blur bg-sky-500/15 text-sky-300 border-sky-400/40">
-                <Link2 className="w-3 h-3 mr-1" />
+              <Badge variant="secondary" className="backdrop-blur bg-sky-500/15 text-sky-300 border-sky-400/40 text-[9px] sm:text-xs">
+                <Link2 className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-0.5" />
                 {formatCode(code)}
               </Badge>
-              <Badge variant="secondary" className="backdrop-blur bg-white/10 text-white/80 border-white/20">
+              <Badge variant="secondary" className="hidden sm:flex backdrop-blur bg-white/10 text-white/80 border-white/20">
                 {role === 'host' ? 'Hostiteľ' : 'Klient'}
               </Badge>
             </div>
-            <div className="flex items-center gap-1.5 pointer-events-auto">
+            <div className="flex items-center gap-0.5 sm:gap-1.5 pointer-events-auto">
               <HelpPanel />
               <ShortcutsOverlay />
               <Button
                 size="icon"
                 variant="ghost"
-                className="h-8 w-8 text-white/70 hover:text-white hover:bg-white/10"
+                className="h-7 w-7 sm:h-8 sm:w-8 text-white/70 hover:text-white hover:bg-white/10"
                 onClick={() => toggleFullscreen(skyMapCardRef.current)}
                 title={isFullscreen ? 'Opustiť fullscreen (Esc)' : 'Fullscreen obloha'}
                 aria-label="Prepnúť fullscreen"
               >
-                {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
+                {isFullscreen ? <Minimize className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : <Maximize className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
               </Button>
               <Button
                 size="icon"
                 variant="ghost"
-                className={`h-8 w-8 ${view.redLight ? 'bg-red-500/30 text-red-300 hover:bg-red-500/40' : 'text-white/80 hover:text-white hover:bg-white/10'}`}
+                className={`h-7 w-7 sm:h-8 sm:w-8 ${view.redLight ? 'bg-red-500/30 text-red-300 hover:bg-red-500/40' : 'text-white/80 hover:text-white hover:bg-white/10'}`}
                 onClick={() => setView({ redLight: !view.redLight })}
                 title="Červený nočný režim (pre zachovanie nočného videnia)"
                 aria-label="Prepnúť červený nočný režim"
               >
-                <Flame className="w-4 h-4" />
+                <Flame className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </Button>
               <Button
                 size="icon"
                 variant="ghost"
-                className={`h-8 w-8 ${audioEnabled ? 'bg-emerald-500/30 text-emerald-300 hover:bg-emerald-500/40' : 'text-white/80 hover:text-white hover:bg-white/10'}`}
+                className={`h-7 w-7 sm:h-8 sm:w-8 ${audioEnabled ? 'bg-emerald-500/30 text-emerald-300 hover:bg-emerald-500/40' : 'text-white/80 hover:text-white hover:bg-white/10'}`}
                 onClick={() => setAudioEnabled((a) => !a)}
                 title="Zvukové upozornenia"
                 aria-label="Prepnúť zvukové upozornenia"
               >
-                {audioEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+                {audioEnabled ? <Volume2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : <VolumeX className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
               </Button>
-              <Button size="sm" variant="ghost" onClick={onLeave} className="text-white/80 hover:text-white hover:bg-white/10">
-                <LogOut className="w-4 h-4 mr-1" />
-                Odísť
+              <Button size="icon" variant="ghost" onClick={onLeave} className="h-7 w-7 sm:h-8 sm:w-8 text-white/80 hover:text-white hover:bg-white/10" title="Odísť">
+                <LogOut className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </Button>
             </div>
           </div>
-          {/* Sky info panel — bottom-left overlay */}
-          <div className="absolute bottom-3 left-3 z-10 w-56 max-w-[55%] pointer-events-auto opacity-95">
+          {/* Sky info panel — bottom-left overlay (desktop only, hidden on mobile) */}
+          <div className="hidden md:block absolute bottom-3 left-3 z-10 w-56 max-w-[40%] pointer-events-auto opacity-95">
             <SkyInfoPanel />
           </div>
-          {/* Bottom overlay: coordinates (right-aligned) */}
+          {/* Bottom overlay: coordinates (right-aligned, compact on mobile) */}
           <div className="absolute bottom-3 right-3 z-10 pointer-events-none">
-            <div className="flex items-center gap-2 text-xs text-white/70 font-mono backdrop-blur bg-black/30 px-2 py-1 rounded">
+            <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-white/70 font-mono backdrop-blur bg-black/40 px-1.5 py-1 rounded">
               <span>AZ {view.az.toFixed(0)}°</span>
               <span>ALT {view.alt.toFixed(0)}°</span>
-              <span>×{view.zoom.toFixed(1)}</span>
-            </div>
-            <div className="flex items-center gap-2 text-xs text-white/70 backdrop-blur bg-black/30 px-2 py-1 rounded mt-1 justify-end">
-              <span>{view.mode === 'night' ? 'Noc' : 'Deň'}</span>
+              <span className="hidden sm:inline">×{view.zoom.toFixed(1)}</span>
             </div>
           </div>
         </Card>
