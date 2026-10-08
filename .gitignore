@@ -54,3 +54,6 @@ server.log
 /skills/db/*.db
 /skills/
 db/*.db
+.neon/
+.mcp.json
+.claude/
