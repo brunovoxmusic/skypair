@@ -18,9 +18,10 @@ import { useSkyStore } from '@/lib/sky-store'
 
 interface SkyMapProps {
   className?: string
+  onStarClick?: (star: { name: string; con: string; ra: number; dec: number; mag: number; altAz: { az: number; alt: number } }) => void
 }
 
-export function SkyMap({ className }: SkyMapProps) {
+export function SkyMap({ className, onStarClick }: SkyMapProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
   const view = useSkyStore((s) => s.view)
@@ -36,6 +37,12 @@ export function SkyMap({ className }: SkyMapProps) {
   const eventsRef = useRef(events)
   useEffect(() => {
     eventsRef.current = events
+  })
+
+  // stable ref for star click callback (avoid re-creating draw)
+  const onStarClickRef = useRef(onStarClick)
+  useEffect(() => {
+    onStarClickRef.current = onStarClick
   })
 
   // field stars + milky way points generated once (deterministic)
@@ -366,6 +373,50 @@ export function SkyMap({ className }: SkyMapProps) {
       }
     }
 
+    // Landscape silhouette near horizon (only when altitude center < 30°)
+    if (v.alt < 35) {
+      ctx.save()
+      ctx.beginPath()
+      ctx.arc(cx, cy, radius - 2, 0, Math.PI * 2)
+      ctx.clip()
+      const horizonY = cy + radius * 0.15 // approximate horizon line
+      // Mountain/tree silhouette using deterministic noise
+      ctx.fillStyle = isNight ? 'rgba(8,12,20,0.85)' : 'rgba(40,50,70,0.7)'
+      ctx.beginPath()
+      ctx.moveTo(0, radius)
+      // generate silhouette using simple sine-based "hills + trees"
+      const seed = 7
+      for (let x = 0; x <= size; x += 4) {
+        const t = x / size
+        // base hills
+        const hill = Math.sin(t * Math.PI * 3 + seed) * 8 + Math.sin(t * Math.PI * 7 + 2) * 4
+        // occasional tree spikes
+        const treeNoise = Math.sin(t * 50.3 + seed * 1.7)
+        const tree = treeNoise > 0.7 ? (treeNoise - 0.7) * 25 : 0
+        const y = horizonY + hill + tree + 8
+        ctx.lineTo(x, y)
+      }
+      ctx.lineTo(size, radius)
+      ctx.lineTo(0, radius)
+      ctx.closePath()
+      ctx.fill()
+      // subtle top edge highlight
+      ctx.strokeStyle = isNight ? 'rgba(60,80,120,0.4)' : 'rgba(255,200,150,0.3)'
+      ctx.lineWidth = 0.8
+      ctx.beginPath()
+      for (let x = 0; x <= size; x += 4) {
+        const t = x / size
+        const hill = Math.sin(t * Math.PI * 3 + seed) * 8 + Math.sin(t * Math.PI * 7 + 2) * 4
+        const treeNoise = Math.sin(t * 50.3 + seed * 1.7)
+        const tree = treeNoise > 0.7 ? (treeNoise - 0.7) * 25 : 0
+        const y = horizonY + hill + tree + 8
+        if (x === 0) ctx.moveTo(x, y)
+        else ctx.lineTo(x, y)
+      }
+      ctx.stroke()
+      ctx.restore()
+    }
+
     // center crosshair
     ctx.strokeStyle = 'rgba(255,255,255,0.3)'
     ctx.lineWidth = 1
@@ -375,7 +426,7 @@ export function SkyMap({ className }: SkyMapProps) {
     ctx.moveTo(cx, cy - 8)
     ctx.lineTo(cx, cy + 8)
     ctx.stroke()
-  }, [fieldStars])
+  }, [fieldStars, milkyWayPoints, starMap])
 
   // animation loop for smooth LST update
   useEffect(() => {
@@ -433,6 +484,51 @@ export function SkyMap({ className }: SkyMapProps) {
     })
   }
 
+  // Single click: hit-test stars and planets
+  const onClick = (e: React.MouseEvent) => {
+    if (!onStarClickRef.current) return
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const rect = canvas.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
+    const size = Math.min(rect.width, rect.height)
+    const radius = size / 2
+    const cx = radius
+    const cy = radius
+    const v = viewRef.current
+    const now = new Date()
+    const lst = localSiderealTime(now, v.lng)
+
+    // Hit-test bright stars (within ~12px)
+    let best: { star: typeof ALL_STARS[number]; dist: number } | null = null
+    for (const star of ALL_STARS) {
+      const altAz = equatorialToHorizontal(star.ra, star.dec, lst, v.lat)
+      if (altAz.alt < -2) continue
+      const p = projectAltAz(altAz, v.az, radius)
+      const dist = Math.hypot(p.x - cx, p.y - cy)
+      if (dist > radius) continue
+      const screenDist = Math.hypot(p.x - x, p.y - y)
+      const hitRadius = Math.max(10, magnitudeToRadius(star.mag, v.zoom) * 3)
+      if (screenDist < hitRadius) {
+        if (!best || screenDist < best.dist) {
+          best = { star, dist: screenDist }
+        }
+      }
+    }
+    if (best) {
+      const altAz = equatorialToHorizontal(best.star.ra, best.star.dec, lst, v.lat)
+      onStarClickRef.current({
+        name: best.star.name,
+        con: best.star.con,
+        ra: best.star.ra,
+        dec: best.star.dec,
+        mag: best.star.mag,
+        altAz,
+      })
+    }
+  }
+
   return (
     <div
       ref={containerRef}
@@ -446,9 +542,10 @@ export function SkyMap({ className }: SkyMapProps) {
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
         onWheel={onWheel}
+        onClick={onClick}
         onDoubleClick={onDoubleClick}
         className="rounded-full cursor-grab active:cursor-grabbing"
-        aria-label="Hviezdna mapa oblohy – ťahajte pre otáčanie, koliesko pre zoom, dvojklik pre značku"
+        aria-label="Hviezdna mapa oblohy – ťahajte pre otáčanie, koliesko pre zoom, klik na hviezdu pre detail, dvojklik pre značku"
       />
     </div>
   )

@@ -25,6 +25,7 @@ import {
   Stars,
   Compass,
   Info,
+  Download,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -36,6 +37,8 @@ import { Separator } from '@/components/ui/separator'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { SkyMap } from './sky-map'
 import { SkyInfoPanel } from './sky-info-panel'
+import { MeteorShowersPanel } from './meteor-showers-panel'
+import { StarInfoPopup, type StarInfo } from './star-info-popup'
 import { useSkyStore } from '@/lib/sky-store'
 import { formatCode } from '@/lib/sky-utils'
 
@@ -140,6 +143,7 @@ export function Observation(props: ObservationProps) {
   )
 
   const [locating, setLocating] = useState(false)
+  const [selectedStar, setSelectedStar] = useState<StarInfo | null>(null)
   const handleLocate = useCallback(() => {
     if (!('geolocation' in navigator)) {
       addChat({ id: 'geo-err-' + Date.now(), text: 'Geolokácia nie je podporovaná v tomto prehliadači.', from: 'system', at: Date.now() })
@@ -170,6 +174,35 @@ export function Observation(props: ObservationProps) {
     )
   }, [setView, addChat])
 
+  const handleExport = useCallback(() => {
+    if (events.length === 0) {
+      addChat({ id: 'exp-' + Date.now(), text: 'Žiadne pozorovania na export.', from: 'system', at: Date.now() })
+      return
+    }
+    const rows = [
+      ['Typ', 'Čas (ISO)', 'Čas (lokálny)', 'X', 'Y', 'Názov'],
+      ...events.map((e) => [
+        e.type,
+        new Date(e.at).toISOString(),
+        new Date(e.at).toLocaleString('sk-SK'),
+        e.x.toFixed(0),
+        e.y.toFixed(0),
+        e.label || '',
+      ]),
+    ]
+    const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n')
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `skypair-pozorovania-${new Date().toISOString().slice(0, 10)}.csv`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    addChat({ id: 'exp-ok-' + Date.now(), text: `Exportovaných ${events.length} pozorovaní do CSV.`, from: 'system', at: Date.now() })
+  }, [events, addChat])
+
   const pcConnected = pcState === 'connected'
 
   return (
@@ -179,9 +212,15 @@ export function Observation(props: ObservationProps) {
         <Card className="flex-1 min-h-[360px] sm:min-h-[460px] relative overflow-hidden bg-[#02030a] border-emerald-500/20">
           <CardContent className="p-0 h-full absolute inset-0 flex items-center justify-center">
             <div className="w-full h-full max-w-[640px] max-h-[640px] aspect-square mx-auto p-2">
-              <SkyMap />
+              <SkyMap onStarClick={(s) => setSelectedStar(s)} />
             </div>
           </CardContent>
+          {/* Star info popup */}
+          <StarInfoPopup
+            star={selectedStar}
+            onClose={() => setSelectedStar(null)}
+            onLocate={(az, alt) => { setView({ az, alt }); setSelectedStar(null) }}
+          />
           {/* Top overlay status bar */}
           <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2 z-10 pointer-events-none">
             <div className="flex items-center gap-2 flex-wrap">
@@ -481,6 +520,19 @@ export function Observation(props: ObservationProps) {
           </CardContent>
         </Card>
 
+        {/* Meteor showers */}
+        <Card className="border-rose-500/20">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-rose-400" />
+              Meteorické roje
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <MeteorShowersPanel />
+          </CardContent>
+        </Card>
+
         {/* Events */}
         <Card>
           <CardHeader className="pb-3">
@@ -495,7 +547,10 @@ export function Observation(props: ObservationProps) {
                     Meteory: {meteorCount}
                   </Badge>
                 )}
-                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={clearEvents}>
+                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handleExport} title="Exportovať do CSV" disabled={events.length === 0}>
+                  <Download className="w-3.5 h-3.5" />
+                </Button>
+                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={clearEvents} title="Vymazať všetky">
                   <Trash2 className="w-3.5 h-3.5" />
                 </Button>
               </div>

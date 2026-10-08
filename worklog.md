@@ -136,3 +136,65 @@
 6. **Nočné krajinka silueta** — landscape silhouette pri horizonte pre lepší vizuálny kontext.
 7. **Záložky hviezd** — uložiť obľúbené objekty do localStorage.
 8. **Export pozorovaní** — stiahnuť zoznam zaznamenaných udalostí ako CSV/JSON.
+
+---
+
+## Fáza 3 — Meteorické roje, interaktívne hviezdy, krajinka (cron webDevReview)
+
+### Current project status (po fáze 3)
+- **Aplikácia stabilná, lint čistý, servery bežia.**
+- QA cez agent-browser potvrdilo všetky nové funkcie: meteorický roj "Zamerať radiant", "Exportovať do CSV", canvas s "klik na hviezdu pre detail".
+- Sky map rendering: 294 jasných + 1289 stredných pixelov (hviezdy + Mliečna cesta + konštelácie + landscape silhouette).
+
+### Goals for phase 3 (completed)
+1. ✅ **Meteorický roj kalendár** — METEOR_SHOWERS (9 rojov: Kvadrantidy, Lýridy, Éta Vodnáre, Delta Vodnáre, Perzeidy, Orionidy, Leonidy, Geminidy, Ursidy) s aktivitou, radiantom, ZHR, rýchlosťou, materským telesom; isShowerActive(), daysUntilPeak(), getActiveShowers()
+2. ✅ **MeteorShowersPanel** komponent — aktívne roje teraz (s radiant alt/az), nadchádzajúce roje (60 dní), "Zamerať radiant" tlačidlo (nastaví az/alt na radiant)
+3. ✅ **Star info popup** — StarInfoPopup komponent: názov, súhvezdie (sk), magnitúda, RA (HMS), Dec (DMS), horizontové súradnice (az/alt), status nad/pod horizontom, popis jasnosti, "Zamerať v mape" tlačidlo
+4. ✅ **Hit-testing na hviezdy** — onClick v sky-map.tsx, najbližšia hviezda v okruhu 10-12px, prenáša StarInfo do popupu
+5. ✅ **Landscape silhouette** pri horizonte — deterministické hills + trees (sine-based), zobrazené iba keď alt < 35°, nočný/šedý/mód
+6. ✅ **Export pozorovaní do CSV** — handleExport() generuje CSV s UTF-8 BOM, stĺpce: Typ, Čas (ISO), Čas (lokálny), X, Y, Názov, download ako skypair-pozorovania-YYYY-MM-DD.csv
+7. ✅ **Vylepšené UX** — tlačidlá s tooltips ("Exportovať do CSV", "Vymazať všetky"), aria-label canvas aktualizovaný
+
+### Completed modifications
+- `src/lib/meteor-showers.ts` (nový): METEOR_SHOWERS, isShowerActive, daysUntilPeak, getActiveShowers, getUpcomingShowers, dateToDayOfYear
+- `src/components/sky/meteor-showers-panel.tsx` (nový): aktívne roje s radiant computation, upcoming roje scrollable, "Zamerať radiant" funkcia
+- `src/components/sky/star-info-popup.tsx` (nový): Framer Motion animovaný popup, RA/Dec formátovanie (HMS/DMS), magnitúda description, constellation lookup
+- `src/components/sky/sky-map.tsx`:
+  - Pridaný onStarClick prop + onStarClickRef
+  - Hit-testing v onClick (pre všetky ALL_STARS, najbližšia hviezda)
+  - Landscape silhouette (hills + trees, clip na kruh)
+  - Canvas aria-label aktualizovaný
+- `src/components/sky/observation.tsx`:
+  - Importy: MeteorShowersPanel, StarInfoPopup, StarInfo, Download ikona
+  - selectedStar state + setSelectedStar
+  - handleExport() — CSV generovanie + Blob download
+  - SkyMap onStarClick callback → setSelectedStar
+  - StarInfoPopup integrovaný ako overlay na sky map
+  - MeteorShowersPanel ako nová Card (border-rose-500/20)
+  - Export tlačidlo s tooltip + disabled state
+  - Vymazať tlačidlo s tooltip
+
+### Verification results (agent-browser)
+- ✅ Canvas aria-label: "klik na hviezdu pre detail" — hit-testing aktívny
+- ✅ "Zamerať radiant" button (@e28) — meteorický roj aktívny (Orionidy v októbri)
+- ✅ "Exportovať do CSV" button (@e29, disabled keď žiadne events)
+- ✅ Sky map pixel analysis: 294 bright + 1289 medium = hviezdy + Mliečna cesta + konštelácie + landscape renderujú
+- ✅ Lint clean, no runtime errors
+- ✅ POST /api/session/verify 200, GET / 200
+
+### Unresolved issues / risks (po fáze 3)
+- **Agent-browser refs nestabilné** pri re-renderoch a toast notifications — riešenie: scroll + fresh snapshot pred interakciou.
+- **Star popup hit-testing** — treba kliknúť presne na hviezdu; slabšie hviezdy (mag > 3) nemajú dostatočný hit radius.
+- **Meteorický radiant** — ak je pod horizontom, "Zamerať radiant" nastaví alt=10° (demo), reálne by mal zobraziť varovanie.
+- **Landscape silhouette** — deterministický, nie realistický; pre produkciu by sa mohol načítať reálny horizon z DEM dát.
+- **Planéty statické** — stále pevné RA/Dec (demo), reálny výpočet by vyžadoval astronomy-engine.
+
+### Priority recommendations for next phase (fáza 4)
+1. **Star bookmarking** — uložiť obľúbené hviezdy do localStorage + dropdown na rýchly prístup.
+2. **Konštelácie názvy** — tooltip alebo label pri hover/kliku na constellation line.
+3. **Satelity (ISS)** — TLE dáta z celestrak.org + satellite.js pre real-time pozície na oblohe.
+4. **Planetárne ephemeris** — reálny výpočet polohy planét podľa dátumu (astronomy-engine knižnica).
+5. **Responsive sky info panel** — kolabovať na mobiloch (< 768px).
+6. **Zvukové upozornenia** — audio alert pri detekcii meteoru alebo ISS preletu.
+7. **Nočný režim červeného svetla** — pre zachovanie nočného videnia (astronomický režim).
+8. **História relácií** — uložiť minulé pozorovania do IndexedDB pre neskoršie nahliadnutie.
