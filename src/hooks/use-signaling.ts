@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { io, Socket } from 'socket.io-client'
-import { SIGNALING_PORT, signalingSocketOptions } from '@/lib/sky-utils'
+import { SIGNALING_PORT, signalingSocketOptions, getSignalingUrl } from '@/lib/sky-utils'
 
 interface UseSignalingArgs {
   code: string | null
@@ -52,7 +52,11 @@ export function useSignaling(args: UseSignalingArgs): SignalingApi {
 
   useEffect(() => {
     if (!code || !role) return
-    const s = io('/?XTransformPort=' + SIGNALING_PORT, signalingSocketOptions())
+    const { url, useGateway } = getSignalingUrl()
+    const connectionUrl = useGateway
+      ? `${url}?XTransformPort=${SIGNALING_PORT}`
+      : url
+    const s = io(connectionUrl, signalingSocketOptions())
     socketRef.current = s
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setSocket(s)

@@ -61,8 +61,23 @@ export function formatCountdown(seconds: number): string {
   return `${m}:${r.toString().padStart(2, '0')}`
 }
 
-/** Signaling port for XTransformPort query */
+/** Signaling port for XTransformPort query (local dev) */
 export const SIGNALING_PORT = 3003
+
+/**
+ * Get signaling server URL.
+ * - In production (Vercel), set NEXT_PUBLIC_SIGNALING_URL env var to your hosted signaling server.
+ * - In local dev, uses Caddy gateway with XTransformPort query.
+ */
+export function getSignalingUrl(): { url: string; useGateway: boolean } {
+  // Check for production signaling URL (e.g., https://signaling.railway.app)
+  const remoteUrl = process.env.NEXT_PUBLIC_SIGNALING_URL
+  if (remoteUrl) {
+    return { url: remoteUrl, useGateway: false }
+  }
+  // Local dev — use Caddy gateway with XTransformPort
+  return { url: '/', useGateway: true }
+}
 
 /** Build socket.io connection options */
 export function signalingSocketOptions() {

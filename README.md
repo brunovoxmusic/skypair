@@ -96,6 +96,8 @@ Otvorte `http://localhost:3000` v prehliadači.
 
 ### 3. Deploy na Vercel
 
+#### Frontend + API (Vercel)
+
 1. Importujte repozitár na [vercel.com](https://vercel.com/new)
 2. Pridajte Environment Variable:
    - `DATABASE_URL` = váš Postgres connection string (z Neon alebo Vercel Postgres)
@@ -103,6 +105,26 @@ Otvorte `http://localhost:3000` v prehliadači.
 4. Po deployi spustite `bun run db:push` lokálne pre vytvorenie tabuliek (alebo použite Vercel CLI)
 
 > **Poznámka**: Aplikácia používa **Postgres** (nie SQLite), pretože Vercel serverless funkcie majú read-only filesystem. SQLite nefunguje na Verceli.
+
+#### Signaling service (Railway / Render / Fly.io)
+
+Signaling service (socket.io server) **nemôže bežať na Verceli**, pretože Vercel nepodporuje dlho-bežiace WebSocket servery v serverless funkciách. Hostujte signaling service osobitne:
+
+```bash
+# Na Railway / Render / Fly.io:
+cd mini-services/signaling
+# Nastavte port a deployujte
+
+# Potom v aplikácii upravte SIGNALING_PORT v src/lib/sky-utils.ts
+# alebo použite environment variable pre signaling URL
+```
+
+Odporúčané hostingy pre signaling:
+- [Railway](https://railway.app) — bezplatný, jednoduchý deploy
+- [Render](https://render.com) — bezplatný WebSocket support
+- [Fly.io](https://fly.io) — globálny deploy
+
+> **Alternatíva**: Pre jednoduché použitie bez samostatného signaling servera môžete použiť [PeerJS Cloud](https://peerjs.com) — ale to vyžaduje úpravu kódu.
 
 ### 4. Získanie Postgres connection string
 
