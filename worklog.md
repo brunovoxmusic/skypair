@@ -476,3 +476,55 @@
 6. **City search** — vyhľadávanie miest pre polohu (cez geocoding API).
 7. **Keyboard shortcuts hints** — vizuálny overlay ukazujúci dostupné skratky.
 8. **PWA support** — Service Worker pre offline fungovanie.
+
+---
+
+## Fáza 9 — Shortcuts overlay, responsive panel, história pozorovaní (cron webDevReview)
+
+### Current project status (po fáze 9)
+- **Aplikácia stabilná, lint čistý.**
+- QA cez agent-browser potvrdilo: "Zobraziť klávesové skratky" button (@e57), "Uložiť do histórie" (@e39), "Zobraziť históriu" (@e40) — všetky prítomné.
+- Sky map renderuje (283 bright + 1322 medium pixelov).
+
+### Goals for phase 9 (completed)
+1. ✅ **Keyboard shortcuts hints overlay** — ShortcutsOverlay komponent: modal s 3 skupinami skratiek (Pohyb mapy, Režimy, Pozorovania), kbd elementy, otvoriteľný cez ? kláves alebo button
+2. ✅ **Responsive sky info panel** — viditeľné súhvezdia sekcia skrytá na malých obrazovkách (`hidden sm:block`), ušetrí miesto na mobiloch
+3. ✅ **História pozorovaní** — useObservationHistory hook (localStorage), History modal so zoznamom uložených relácií, Save button, delete jednotlivých/zobrazenie všetkých
+4. ✅ **Integrácia** — ShortcutsOverlay v top bare, History modal v Events karte
+
+### Completed modifications
+- `src/components/sky/shortcuts-overlay.tsx` (nový): ShortcutsOverlay modal s 3 skupinami skratiek, ? kláves toggle, Keyboard ikona button
+- `src/hooks/use-observation-history.ts` (nový): useObservationHistory hook s localStorage persistenciou (max 100 relácií), saveSession/deleteEntry/clearAll
+- `src/components/sky/sky-info-panel.tsx`: pridaný `hidden sm:block` pre viditeľné súhvezdia sekciu (responsive)
+- `src/components/sky/observation.tsx`:
+  - Importy: ShortcutsOverlay, useObservationHistory, History, Save, X z lucide-react
+  - `useObservationHistory` hook volanie
+  - `showHistory` state + `handleSaveToHistory` funkcia
+  - ShortcutsOverlay v top status bare (vedľa HelpPanel)
+  - Save + History tlačidlá v Events karte headeri
+  - History modal (Framer Motion animácie) s zoznamom uložených relácií
+
+### Verification results (agent-browser)
+- ✅ "Zobraziť klávesové skratky" button (@e57) prítomný
+- ✅ "Uložiť do histórie" button (@e39, disabled keď žiadne events)
+- ✅ "Zobraziť históriu" button (@e40) prítomný
+- ✅ Sky map pixel analysis: 283 bright + 1322 medium = hviezdy + deep-sky renderujú
+- ✅ Lint clean, no runtime errors
+- ✅ POST /api/session/verify 200, GET / 200
+
+### Unresolved issues / risks (po fáze 9)
+- **Agent-browser session veľmi nestabilná** — po 1-2 interakciách sa stratí; riešenie: všetky testy v jednom bash volaní.
+- **Dev server zomiera medzi bash volaniami** — bash tool zabíja child procesy; treba reštartovať v každom testovacom volaní.
+- **História len v localStorage** — pri čistení prehliadača sa stratí; pre produkciu by sa mala použiť IndexedDB alebo backend.
+- **Shortcuts overlay** — zatvára sa len cez X alebo klik mimo, nie cez Escape.
+- **Responsive panel** — len súhvezdia sekcia skrytá; ďalšie sekcie by sa mohli kolabovať.
+
+### Priority recommendations for next phase (fáza 10)
+1. **Satelity (ISS)** — TLE dáta z celestrak.org + satellite.js pre real-time pozície.
+2. **Planetárne ephemeris** — reálny výpočet polohy planét (astronomy-engine).
+3. **Notifikácie preletov** — upozornenie keď ISS preletí nad obzorom.
+4. **City search** — vyhľadávanie miest pre polohu (cez geocoding API).
+5. **PWA support** — Service Worker pre offline fungovanie.
+6. **Escape zatváranie modálov** — pridať Escape handler pre všetky modály.
+7. **Responsive ďalšie** — kolabovať aj controls panel na mobiloch.
+8. **Zdieľanie pozorovaní** — exportovať históriu ako zdieľateľný link.

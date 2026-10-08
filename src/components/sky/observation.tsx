@@ -34,6 +34,9 @@ import {
   CircleDashed,
   FileJson,
   MapPin,
+  History,
+  Save,
+  X,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -52,7 +55,9 @@ import { ConstellationInfoPopup, buildConstellationInfo, type ConstellationInfo 
 import { SearchPanel, type SearchResult } from './search-panel'
 import { OnboardingOverlay } from './onboarding-overlay'
 import { HelpPanel } from './help-panel'
+import { ShortcutsOverlay } from './shortcuts-overlay'
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts'
+import { useObservationHistory } from '@/hooks/use-observation-history'
 import { useSkyStore } from '@/lib/sky-store'
 import { formatCode } from '@/lib/sky-utils'
 import { ALL_STARS, localSiderealTime, equatorialToHorizontal } from '@/lib/stars'
@@ -363,6 +368,25 @@ export function Observation(props: ObservationProps) {
     onClosePopups: () => { setSelectedStar(null); setSelectedDso(null); setSelectedConstellation(null) },
   })
 
+  // Observation history (localStorage)
+  const { history, saveSession, deleteEntry, clearAll: clearHistory } = useObservationHistory()
+  const [showHistory, setShowHistory] = useState(false)
+  const handleSaveToHistory = useCallback(() => {
+    if (events.length === 0) {
+      addChat({ id: 'hist-err-' + Date.now(), text: 'Žiadne pozorovania na uloženie.', from: 'system', at: Date.now() })
+      return
+    }
+    saveSession({
+      sessionId: code,
+      sessionCode: code,
+      date: new Date().toISOString(),
+      eventCount: events.length,
+      meteorCount,
+      events: [...events],
+    })
+    addChat({ id: 'hist-ok-' + Date.now(), text: `Pozorovania uložené do histórie (${events.length} udalostí).`, from: 'system', at: Date.now() })
+  }, [events, code, meteorCount, saveSession, addChat])
+
   const pcConnected = pcState === 'connected'
 
   return (
@@ -440,6 +464,7 @@ export function Observation(props: ObservationProps) {
             </div>
             <div className="flex items-center gap-1.5 pointer-events-auto">
               <HelpPanel />
+              <ShortcutsOverlay />
               <Button
                 size="icon"
                 variant="ghost"
@@ -851,6 +876,12 @@ export function Observation(props: ObservationProps) {
                 <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handleExportJson} title="Exportovať do JSON" disabled={events.length === 0}>
                   <FileJson className="w-3.5 h-3.5" />
                 </Button>
+                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handleSaveToHistory} title="Uložiť do histórie" disabled={events.length === 0}>
+                  <Save className="w-3.5 h-3.5" />
+                </Button>
+                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setShowHistory(true)} title="Zobraziť históriu">
+                  <History className="w-3.5 h-3.5" />
+                </Button>
                 <Button size="icon" variant="ghost" className="h-7 w-7" onClick={clearEvents} title="Vymazať všetky">
                   <Trash2 className="w-3.5 h-3.5" />
                 </Button>
@@ -955,6 +986,78 @@ export function Observation(props: ObservationProps) {
           </CardContent>
         </Card>
       </div>
+
+      {/* History modal */}
+      {showHistory && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+          onClick={() => setShowHistory(false)}
+        >
+          <motion.div
+            initial={{ scale: 0.95, y: 20 }}
+            animate={{ scale: 1, y: 0 }}
+            className="relative w-full max-w-lg max-h-[80vh] overflow-hidden bg-card rounded-2xl border border-amber-400/30 shadow-2xl flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-4 py-3 bg-amber-500/10 border-b border-amber-400/20">
+              <div className="flex items-center gap-2">
+                <History className="w-5 h-5 text-amber-400" />
+                <h2 className="font-semibold text-base">História pozorovaní</h2>
+                <Badge variant="outline" className="text-[10px]">{history.length}</Badge>
+              </div>
+              <div className="flex items-center gap-1">
+                {history.length > 0 && (
+                  <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive" onClick={clearHistory}>
+                    Vymazať všetko
+                  </Button>
+                )}
+                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setShowHistory(false)}>
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+            <div className="overflow-y-auto sky-scroll p-3 space-y-2">
+              {history.length === 0 ? (
+                <div className="text-center py-10 text-muted-foreground">
+                  <History className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                  <p className="text-sm">Žiadne uložené pozorovania.</p>
+                  <p className="text-xs mt-1">Po zaznamenaní udalostí kliknite na ikonu uloženia.</p>
+                </div>
+              ) : (
+                history.map((entry) => (
+                  <div key={entry.sessionId} className="rounded-lg border border-border/50 p-3 bg-muted/20">
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-sm font-medium">{entry.sessionCode.slice(0, 3)}-{entry.sessionCode.slice(3)}</span>
+                        <Badge variant="outline" className="text-[9px]">{entry.eventCount} udalostí</Badge>
+                        {entry.meteorCount > 0 && (
+                          <Badge variant="outline" className="text-[9px] text-rose-300 border-rose-400/40">
+                            {entry.meteorCount} meteorov
+                          </Badge>
+                        )}
+                      </div>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-6 w-6 text-destructive"
+                        onClick={() => deleteEntry(entry.sessionId)}
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {new Date(entry.date).toLocaleString('sk-SK')}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
     </div>
   )
 }

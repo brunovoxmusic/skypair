@@ -77,8 +77,9 @@ export function SkyInfoPanel() {
         </div>
       </div>
 
+      {/* Hide on small screens to save space */}
       {visibleInfo.length > 0 && (
-        <div className="rounded-lg bg-muted/40 p-2">
+        <div className="rounded-lg bg-muted/40 p-2 hidden sm:block">
           <div className="flex items-center gap-1 text-muted-foreground mb-1">
             <Eye className="w-3 h-3" />
             <span className="text-[10px] uppercase">Viditeľné súhvezdia</span>
