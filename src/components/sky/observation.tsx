@@ -51,6 +51,8 @@ import { DeepSkyInfoPopup, type DeepSkyInfo } from './deep-sky-info-popup'
 import { ConstellationInfoPopup, buildConstellationInfo, type ConstellationInfo } from './constellation-info-popup'
 import { SearchPanel, type SearchResult } from './search-panel'
 import { OnboardingOverlay } from './onboarding-overlay'
+import { HelpPanel } from './help-panel'
+import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts'
 import { useSkyStore } from '@/lib/sky-store'
 import { formatCode } from '@/lib/sky-utils'
 import { ALL_STARS, localSiderealTime, equatorialToHorizontal } from '@/lib/stars'
@@ -353,6 +355,14 @@ export function Observation(props: ObservationProps) {
     }
   }, [view.lng, view.lat, setView])
 
+  // Keyboard shortcuts
+  useKeyboardShortcuts({
+    audioEnabled,
+    onMeteor: () => markEvent('meteor'),
+    onSatellite: () => markEvent('satellite'),
+    onClosePopups: () => { setSelectedStar(null); setSelectedDso(null); setSelectedConstellation(null) },
+  })
+
   const pcConnected = pcState === 'connected'
 
   return (
@@ -365,9 +375,8 @@ export function Observation(props: ObservationProps) {
           <CardContent className="p-0 h-full absolute inset-0 flex items-center justify-center">
             <div className="w-full h-full max-w-[640px] max-h-[640px] aspect-square mx-auto p-2">
               <SkyMap
-                onStarClick={(s) => { setSelectedStar(s); setSelectedDso(null) }}
+                onStarClick={(s) => { setSelectedStar(s); setSelectedDso(null); setSelectedConstellation(null) }}
                 onDeepSkyClick={(d) => {
-                  // Find full DSO info from catalog
                   const full = MESSIER_CATALOG.find((c) => c.messierId === d.messierId)
                   setSelectedDso({
                     ...d,
@@ -378,6 +387,15 @@ export function Observation(props: ObservationProps) {
                     bestSeen: full?.bestSeen,
                   })
                   setSelectedStar(null)
+                  setSelectedConstellation(null)
+                }}
+                onConstellationClick={(abbr) => {
+                  const info = buildConstellationInfo(abbr, view.lat, view.lng)
+                  if (info) {
+                    setSelectedConstellation(info)
+                    setSelectedStar(null)
+                    setSelectedDso(null)
+                  }
                 }}
               />
             </div>
@@ -421,6 +439,7 @@ export function Observation(props: ObservationProps) {
               </Badge>
             </div>
             <div className="flex items-center gap-1.5 pointer-events-auto">
+              <HelpPanel />
               <Button
                 size="icon"
                 variant="ghost"

@@ -423,3 +423,56 @@
 6. **Notifikácie preletov** — upozornenie keď ISS preletí nad obzorom.
 7. **City search** — vyhľadávanie miest pre polohu (cez geocoding API).
 8. **Help/FAQ panel** — rozšírený help pre používateľov.
+
+---
+
+## Fáza 8 — Klik na constellation line, Help/FAQ, keyboard shortcuts (cron webDevReview)
+
+### Current project status (po fáze 8)
+- **Aplikácia stabilná, lint čistý.**
+- QA cez agent-browser potvrdilo: Help button "Otvoriť pomocníka" (@e54), Help modal "Pomocník & FAQ" s 7 otázkami (Ako ovládam hviezdnu mapu?, Čo sú meteorické roje?, atď.), keyboard shortcuts aktívne.
+- Sky map renderuje (313 bright + 1292 medium pixelov).
+
+### Goals for phase 8 (completed)
+1. ✅ **Klik na constellation line v mape** — onConstellationClick callback, hit-testing s distance-to-line-segment algoritmom (distance < 6px), volá buildConstellationInfo a otvorí ConstellationInfoPopup
+2. ✅ **Help/FAQ panel** — HelpPanel komponent: modal s 7 FAQ otázkami (otáčanie mapy, vyhľadávanie, kamera, meteorické roje, červený režim, export, klávesové skratky), accordion rozbaľovanie, tip sekcia
+3. ✅ **Keyboard shortcuts** — useKeyboardShortcuts hook: šípky (otáčanie), +/- (zoom), N (deň/noc), R (červený režim), M (meteor), S (satelit), Esc (zatvorenie popupov), skip pri input/textarea focus
+4. ✅ **Integrácia** — HelpPanel v top bare (vedľa červeného režimu), useKeyboardShortcuts hook v observation komponente
+
+### Completed modifications
+- `src/hooks/use-keyboard-shortcuts.ts` (nový): useKeyboardShortcuts hook s 8 skratkami, skip pri input focus, no modifier keys
+- `src/components/sky/help-panel.tsx` (nový): HelpPanel modal s 7 FAQ items, accordion rozbaľovanie (Framer Motion), tip sekcia, HelpCircle button v top bare
+- `src/components/sky/sky-map.tsx`:
+  - Pridaný `onConstellationClick` prop + onConstellationClickRef
+  - Constellation line hit-testing v onClick (distance-to-line-segment, < 6px)
+  - Volá onConstellationClickRef.current(abbr) pri nájdení najbližšej constellation line
+- `src/components/sky/observation.tsx`:
+  - Importy: HelpPanel, useKeyboardShortcuts
+  - `useKeyboardShortcuts` hook s onMeteor/onSatellite/onClosePopups callbacks
+  - SkyMap onConstellationClick callback → buildConstellationInfo → setSelectedConstellation
+  - HelpPanel v top status bare (vedľa červeného režimu)
+
+### Verification results (agent-browser)
+- ✅ Help button "Otvoriť pomocníka" (@e54) prítomný
+- ✅ Help modal "Pomocník & FAQ" s 7 otázkami: "Ako ovládam hviezdnu mapu?" (@e69), "Čo sú meteorické roje?" (@e72)
+- ✅ Keyboard shortcut N (toggle day/night) funguje
+- ✅ Sky map pixel analysis: 313 bright + 1292 medium = hviezdy + deep-sky renderujú
+- ✅ Lint clean, no runtime errors
+- ✅ POST /api/session/verify 200, GET / 200
+
+### Unresolved issues / risks (po fáze 8)
+- **Agent-browser session veľmi nestabilná** — po 1-2 interakciách sa stratí; riešenie: všetky testy v jednom bash volaní.
+- **Dev server zomiera medzi bash volaniami** — bash tool zabíja child procesy; treba reštartovať v každom testovacom volaní.
+- **Constellation hit-testing** — funguje len keď showConstellations je zapnuté; pre slabšie zobrazenie môže byť ťažké trafíť line.
+- **Keyboard shortcuts** — neukazujú sa vizuálne (len v Help/FAQ); pre objavenie by sa mohol pridať hints overlay.
+- **Help modal** — nezatvára sa pri Escape (len klik mimo alebo X button).
+
+### Priority recommendations for next phase (fáza 9)
+1. **Satelity (ISS)** — TLE dáta z celestrak.org + satellite.js pre real-time pozície.
+2. **Planetárne ephemeris** — reálny výpočet polohy planét (astronomy-engine).
+3. **Responsive sky info panel** — kolabovať na mobiloch (< 768px).
+4. **História relácií** — IndexedDB pre minulé pozorovania.
+5. **Notifikácie preletov** — upozornenie keď ISS preletí nad obzorom.
+6. **City search** — vyhľadávanie miest pre polohu (cez geocoding API).
+7. **Keyboard shortcuts hints** — vizuálny overlay ukazujúci dostupné skratky.
+8. **PWA support** — Service Worker pre offline fungovanie.

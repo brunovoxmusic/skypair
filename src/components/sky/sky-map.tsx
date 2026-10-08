@@ -21,9 +21,10 @@ interface SkyMapProps {
   className?: string
   onStarClick?: (star: { name: string; con: string; ra: number; dec: number; mag: number; altAz: { az: number; alt: number } }) => void
   onDeepSkyClick?: (dso: { messierId: string; name: string; nameSk: string; type: string; ra: number; dec: number; mag: number; altAz: { az: number; alt: number } }) => void
+  onConstellationClick?: (abbr: string) => void
 }
 
-export function SkyMap({ className, onStarClick, onDeepSkyClick }: SkyMapProps) {
+export function SkyMap({ className, onStarClick, onDeepSkyClick, onConstellationClick }: SkyMapProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
   const view = useSkyStore((s) => s.view)
@@ -49,6 +50,10 @@ export function SkyMap({ className, onStarClick, onDeepSkyClick }: SkyMapProps) 
   const onDeepSkyClickRef = useRef(onDeepSkyClick)
   useEffect(() => {
     onDeepSkyClickRef.current = onDeepSkyClick
+  })
+  const onConstellationClickRef = useRef(onConstellationClick)
+  useEffect(() => {
+    onConstellationClickRef.current = onConstellationClick
   })
 
   // field stars + milky way points generated once (deterministic)
@@ -609,6 +614,45 @@ export function SkyMap({ className, onStarClick, onDeepSkyClick }: SkyMapProps) 
           mag: bestDso.dso.mag,
           altAz,
         })
+        return
+      }
+    }
+
+    // Hit-test constellation lines (distance to line segment < 6px)
+    if (onConstellationClickRef.current && v.showConstellations) {
+      let bestCon: { abbr: string; dist: number } | null = null
+      for (const line of CONSTELLATION_LINES) {
+        const s1 = starMap.get(line.from)
+        const s2 = starMap.get(line.to)
+        if (!s1 || !s2) continue
+        const a1 = equatorialToHorizontal(s1.ra, s1.dec, lst, v.lat)
+        const a2 = equatorialToHorizontal(s2.ra, s2.dec, lst, v.lat)
+        if (a1.alt < -2 || a2.alt < -2) continue
+        const p1 = projectAltAz(a1, v.az, radius)
+        const p2 = projectAltAz(a2, v.az, radius)
+        const d1 = Math.hypot(p1.x - cx, p1.y - cy)
+        const d2 = Math.hypot(p2.x - cx, p2.y - cy)
+        if (d1 > radius && d2 > radius) continue
+        // Distance from point to line segment
+        const dx = p2.x - p1.x
+        const dy = p2.y - p1.y
+        const len2 = dx * dx + dy * dy
+        let t = 0
+        if (len2 > 0) {
+          t = ((x - p1.x) * dx + (y - p1.y) * dy) / len2
+          t = Math.max(0, Math.min(1, t))
+        }
+        const px = p1.x + t * dx
+        const py = p1.y + t * dy
+        const dist = Math.hypot(x - px, y - py)
+        if (dist < 6) {
+          if (!bestCon || dist < bestCon.dist) {
+            bestCon = { abbr: line.con, dist }
+          }
+        }
+      }
+      if (bestCon) {
+        onConstellationClickRef.current(bestCon.abbr)
       }
     }
   }
