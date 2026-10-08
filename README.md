@@ -65,6 +65,11 @@ Webová aplikácia na pozorovanie nočnej a dennej oblohy. Spárujte dve zariade
 - **Bun** (alebo Node.js 18+)
 - **Postgres databáza** — odporúčame [Neon](https://neon.tech) (bezplatný serverless Postgres) alebo [Vercel Postgres](https://vercel.com/docs/storage/vercel-postgres)
 
+> **Lokálny vývoj**: Aplikácia používa Postgres provider. Pre lokálny vývoj môžete:
+> - Použiť [Neon](https://neon.tech) Postgres (funguje cez internet, bezplatné)
+> - Spustiť Postgres lokálne cez Docker: `docker run -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres`
+> - Dočasne zmeniť provider v `prisma/schema.prisma` z `postgresql` na `sqlite` (pre rýchle testovanie)
+
 ### 2. Lokálne spustenie
 
 ```bash
