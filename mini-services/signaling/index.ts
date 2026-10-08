@@ -88,11 +88,17 @@ io.on('connection', (socket) => {
       socket.id,
     )
 
-    // If both peers present, tell host a client arrived
+    // If both peers present, notify both host and client that peer is ready
     if (room.size === 2) {
       const hostPeer = [...room.values()].find((p) => p.role === 'host')
-      if (hostPeer && hostPeer.socketId !== socket.id) {
-        io.to(hostPeer.socketId).emit('peer:ready', { clientPeerId: socket.id })
+      const clientPeer = [...room.values()].find((p) => p.role === 'client')
+      // Tell host that client arrived (so host creates PC + sends offer)
+      if (hostPeer && clientPeer && hostPeer.socketId !== socket.id) {
+        io.to(hostPeer.socketId).emit('peer:ready', { clientPeerId: clientPeer.socketId })
+      }
+      // Tell client that host is ready (so client knows peer is present)
+      if (hostPeer && clientPeer && clientPeer.socketId !== socket.id) {
+        io.to(clientPeer.socketId).emit('peer:ready', { clientPeerId: hostPeer.socketId })
       }
     }
   })

@@ -222,8 +222,9 @@ export function useWebRTC(args: UseWebRTCArgs): WebRtcApi {
   }, [attachLocalStream])
 
   // When host gets remotePeerId (peer:ready), ensure PC exists. negotiationneeded fires offer.
+  // For client: when remotePeerId is set, ensure PC exists so it's ready to receive offer.
   useEffect(() => {
-    if (role === 'host' && remotePeerId && peerPresent) {
+    if (remotePeerId && peerPresent) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       ensurePeer()
     }
