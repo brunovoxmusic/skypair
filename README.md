@@ -65,15 +65,11 @@ Webová aplikácia na pozorovanie nočnej a dennej oblohy. Spárujte dve zariade
 git clone https://github.com/brunovoxmusic/skypair.git
 cd skypair
 
-# Nainštalovať závislosti
+# Nainštalovať závislosti (automaticky vygeneruje Prisma klienta)
 bun install
 
-# Nastaviť environment
-cp .env.example .env
-# Upraviť .env podľa potreby
-
-# Push databázovej schémy
-bun run db:push
+# Rýchly setup — skopíruje .env.example a nastaví databázu
+bun run setup
 
 # Spustiť signaling service (port 3003)
 cd mini-services/signaling
@@ -86,6 +82,9 @@ bun run dev
 ```
 
 Otvorte `http://localhost:3000` v prehliadači.
+
+> **Poznámka**: Ak sa zobrazí chyba `Environment variable not found: DATABASE_URL`,
+> spustite `bun run setup` alebo manuálne skopírujte `.env.example` do `.env`.
 
 ## 🚀 Použitie
 
