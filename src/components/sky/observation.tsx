@@ -31,6 +31,8 @@ import {
   VolumeX,
   Bookmark,
   BookmarkCheck,
+  CircleDashed,
+  FileJson,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -243,6 +245,36 @@ export function Observation(props: ObservationProps) {
     URL.revokeObjectURL(url)
     addChat({ id: 'exp-ok-' + Date.now(), text: `Exportovaných ${events.length} pozorovaní do CSV.`, from: 'system', at: Date.now() })
   }, [events, addChat])
+
+  const handleExportJson = useCallback(() => {
+    if (events.length === 0) {
+      addChat({ id: 'expj-' + Date.now(), text: 'Žiadne pozorovania na export.', from: 'system', at: Date.now() })
+      return
+    }
+    const data = {
+      exportedAt: new Date().toISOString(),
+      location: { lat: view.lat, lng: view.lng },
+      totalEvents: events.length,
+      meteorCount,
+      events: events.map((e) => ({
+        type: e.type,
+        time: new Date(e.at).toISOString(),
+        timeLocal: new Date(e.at).toLocaleString('sk-SK'),
+        position: { x: e.x, y: e.y },
+        label: e.label || null,
+      })),
+    }
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `skypair-pozorovania-${new Date().toISOString().slice(0, 10)}.json`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    addChat({ id: 'expj-ok-' + Date.now(), text: `Exportovaných ${events.length} pozorovaní do JSON.`, from: 'system', at: Date.now() })
+  }, [events, view.lat, view.lng, meteorCount, addChat])
 
   // Star bookmarks (localStorage)
   const [bookmarks, setBookmarks] = useState<string[]>([])
@@ -569,6 +601,13 @@ export function Observation(props: ObservationProps) {
                 </label>
                 <Switch checked={view.showPlanets} onCheckedChange={(c) => setView({ showPlanets: c })} />
               </div>
+              <div className="flex items-center justify-between">
+                <label className="text-sm flex items-center gap-1.5">
+                  <CircleDashed className="w-3.5 h-3.5 text-violet-400" />
+                  Deep-sky objekty
+                </label>
+                <Switch checked={view.showDeepSky} onCheckedChange={(c) => setView({ showDeepSky: c })} />
+              </div>
             </div>
 
             <Separator />
@@ -672,6 +711,9 @@ export function Observation(props: ObservationProps) {
                 )}
                 <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handleExport} title="Exportovať do CSV" disabled={events.length === 0}>
                   <Download className="w-3.5 h-3.5" />
+                </Button>
+                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handleExportJson} title="Exportovať do JSON" disabled={events.length === 0}>
+                  <FileJson className="w-3.5 h-3.5" />
                 </Button>
                 <Button size="icon" variant="ghost" className="h-7 w-7" onClick={clearEvents} title="Vymazať všetky">
                   <Trash2 className="w-3.5 h-3.5" />

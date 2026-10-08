@@ -262,3 +262,56 @@
 6. **Deep sky objekty** — Messier katalóg (M31, M42, M45...) s pozíciami a popismi.
 7. **Notifikácie preletov** — upozornenie keď ISS preletí nad obzorom.
 8. **Export do JSON** — rozšíriť export o JSON formát pre integráciu s inými nástrojmi.
+
+---
+
+## Fáza 5 — Deep-sky objekty, JSON export, vylepšenia (cron webDevReview)
+
+### Current project status (po fáze 5)
+- **Aplikácia stabilná, lint čistý, servery bežia.**
+- QA cez agent-browser potvrdilo: deep-sky toggle (7 switches celkom), JSON export tlačidlo pridané, sky map renderuje (317 bright + 1309 medium pixelov s deep-sky objektami).
+- Messier katalóg (12 objektov) integrovaný: M31 Andromeda, M42 Orion, M45 Plejády, M44 Jasličky, M13 Herkules, M57 Prstencová, M27 Činka, M81 Bode, M51 Vír, M104 Sombrero, M1 Krabia, M22 Strelec.
+
+### Goals for phase 5 (completed)
+1. ✅ **Messier deep-sky katalóg** — `src/lib/deep-sky.ts`: MESSIER_CATALOG (12 objektov: galaxie, hmloviny, hviezdokopy), getDsoStyle() (ikon + farba + label podľa typu)
+2. ✅ **Deep-sky rendering na sky map** — dashed circles s farebným outline (galaxia fialová, hmlovina modrá, otvorená hviezdokopa žltá, guľová zelená, planetárna ružová), soft glow pre jasnejšie objekty (mag < 5), Messier ID label
+3. ✅ **Deep-sky toggle** — `showDeepSky` flag v store, CircleDashed ikona v controls paneli, default: zapnuté
+4. ✅ **JSON export** — handleExportJson() generuje štruktúrovaný JSON s metadátami (exportedAt, location, totalEvents, meteorCount, events[]), FileJson ikona v Events karte
+5. ✅ **Store rozšírený** — `showDeepSky: boolean` v SkyState (default: true)
+
+### Completed modifications
+- `src/lib/deep-sky.ts` (nový): DeepSkyObject interface, MESSIER_CATALOG (12 objektov s RA/Dec/mag/size/distance/constellation/description/bestSeen), getDsoStyle() funkcia
+- `src/lib/sky-store.ts`: pridaný `showDeepSky: boolean` do SkyState (default: true)
+- `src/components/sky/sky-map.tsx`:
+  - Import MESSIER_CATALOG, getDsoStyle z `@/lib/deep-sky`
+  - Deep-sky rendering sekcia: dashed circles, soft glow pre mag<5, Messier ID labels, clip na kruh
+  - Farby podľa typu: galaxia #a78bfa, hmlovina #60a5fa, otvorená #fbbf24, guľová #34d399, planetárna #f472b6
+- `src/components/sky/observation.tsx`:
+  - Importy: CircleDashed, FileJson z lucide-react
+  - `showDeepSky` toggle v controls paneli (CircleDashed ikona, violet farba)
+  - `handleExportJson()` — JSON s metadátami + events[], FileJson ikona tlačidlo
+  - JSON export tlačidlo medzi CSV a Vymazať
+
+### Verification results (agent-browser)
+- ✅ Deep-sky switch prítomný (7 switches celkom, oproti 6 predtým)
+- ✅ "Exportovať do JSON" button (@e31, disabled keď žiadne events)
+- ✅ Sky map pixel analysis: 317 bright + 1309 medium = hviezdy + Mliečna cesta + konštelácie + deep-sky objekty renderujú
+- ✅ Lint clean, no runtime errors
+- ✅ POST /api/session/verify 200, GET / 200
+- ✅ Bug fix: `Galaxy` ikona neexistuje v lucide-react — nahradené `CircleDashed`
+
+### Unresolved issues / risks (po fáze 5)
+- **Agent-browser session nestabilná** — po 2-3 interakciách sa stratí; riešenie: všetky testy v jednom bash volaní.
+- **Deep-sky hit-testing chýba** — klik na deep-sky objekt neotvorí popup (len hviezdy majú hit-testing).
+- **Messier pozície statické** — J2000 epoch, pre presné pozície by sa mali počítať pre aktuálny dátum.
+- **Deep-sky veľkosti** — veľkosť kruhu závisí od magnitúdy, ale reálna uhlová veľkosť (size) sa nepoužíva.
+
+### Priority recommendations for next phase (fáza 6)
+1. **Deep-sky info popup** — klik na deep-sky objekt otvorí popup s detailmi (vzdialenosť, typ, popis).
+2. **Satelity (ISS)** — TLE dáta z celestrak.org + satellite.js pre real-time pozície.
+3. **Planetárne ephemeris** — reálny výpočet polohy planét (astronomy-engine).
+4. **Konštelácie názvy** — label pri hover/kliku na constellation line.
+5. **Responsive sky info panel** — kolabovať na mobiloch.
+6. **História relácií** — IndexedDB pre minulé pozorovania.
+7. **Search/filter hviezd** — vyhľadávanie hviezd podľa názvu.
+8. **Notifikácie preletov** — upozornenie keď ISS preletí nad obzorom.

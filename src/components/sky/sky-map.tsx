@@ -14,6 +14,7 @@ import {
   magnitudeToRadius,
   starColor,
 } from '@/lib/stars'
+import { MESSIER_CATALOG, getDsoStyle } from '@/lib/deep-sky'
 import { useSkyStore } from '@/lib/sky-store'
 
 interface SkyMapProps {
@@ -330,6 +331,51 @@ export function SkyMap({ className, onStarClick }: SkyMapProps) {
           ctx.textBaseline = 'middle'
           ctx.fillText(`${planet.symbol} ${planet.name}`, p.x + r + 3, p.y)
         }
+      }
+    }
+
+    // Deep sky objects (Messier catalog) — small dashed circles with labels
+    if (v.showDeepSky) {
+      for (const dso of MESSIER_CATALOG) {
+        const altAz = equatorialToHorizontal(dso.ra, dso.dec, lst, v.lat)
+        if (altAz.alt < -2) continue
+        const p = projectAltAz(altAz, v.az, radius)
+        if (!p.visible) continue
+        const dist = Math.hypot(p.x - cx, p.y - cy)
+        if (dist > radius) continue
+        const style = getDsoStyle(dso.type)
+        const size = Math.max(4, Math.min(14, (10 - dso.mag) * 1.5)) * Math.sqrt(v.zoom)
+        // outer dashed circle
+        ctx.save()
+        ctx.strokeStyle = style.color
+        ctx.globalAlpha = isNight ? 0.7 : 0.85
+        ctx.lineWidth = 1.2
+        ctx.setLineDash([2, 2])
+        ctx.beginPath()
+        ctx.arc(p.x, p.y, size, 0, Math.PI * 2)
+        ctx.stroke()
+        ctx.setLineDash([])
+        // soft glow for brighter DSOs
+        if (dso.mag < 5) {
+          const glow = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, size * 1.5)
+          glow.addColorStop(0, `${style.color}55`)
+          glow.addColorStop(1, 'rgba(0,0,0,0)')
+          ctx.fillStyle = glow
+          ctx.globalAlpha = 0.4
+          ctx.beginPath()
+          ctx.arc(p.x, p.y, size * 1.5, 0, Math.PI * 2)
+          ctx.fill()
+        }
+        ctx.globalAlpha = 1
+        // label
+        if (v.showLabels) {
+          ctx.font = '9px ui-sans-serif, system-ui'
+          ctx.fillStyle = style.color
+          ctx.textAlign = 'left'
+          ctx.textBaseline = 'middle'
+          ctx.fillText(`${dso.messierId}`, p.x + size + 2, p.y)
+        }
+        ctx.restore()
       }
     }
 

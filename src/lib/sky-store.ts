@@ -15,6 +15,7 @@ export interface SkyState {
   showConstellations: boolean
   showMilkyWay: boolean
   showPlanets: boolean
+  showDeepSky: boolean
   followPeer: boolean
 }
 
@@ -79,6 +80,7 @@ const DEFAULT_VIEW: SkyState = {
   showConstellations: true,
   showMilkyWay: true,
   showPlanets: true,
+  showDeepSky: true,
   followPeer: true,
 }
 
