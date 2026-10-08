@@ -3,7 +3,11 @@
 import { useEffect, useRef, useCallback, useMemo } from 'react'
 import {
   BRIGHT_STARS,
+  ALL_STARS,
+  CONSTELLATION_LINES,
+  PLANETS,
   generateFieldStars,
+  generateMilkyWayPoints,
   localSiderealTime,
   equatorialToHorizontal,
   projectAltAz,
@@ -34,8 +38,15 @@ export function SkyMap({ className }: SkyMapProps) {
     eventsRef.current = events
   })
 
-  // field stars generated once (deterministic)
+  // field stars + milky way points generated once (deterministic)
   const fieldStars = useMemo(() => generateFieldStars(420, 7), [])
+  const milkyWayPoints = useMemo(() => generateMilkyWayPoints(), [])
+  // star lookup map for constellation lines
+  const starMap = useMemo(() => {
+    const m = new Map<string, typeof BRIGHT_STARS[number]>()
+    for (const s of ALL_STARS) m.set(s.name, s)
+    return m
+  }, [])
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current
@@ -60,22 +71,45 @@ export function SkyMap({ className }: SkyMapProps) {
     const cx = radius
     const cy = radius
 
-    // background gradient (night vs day)
+    // background gradient (night vs day) with atmospheric horizon glow
     const isNight = v.mode === 'night'
     const bgGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius)
     if (isNight) {
-      bgGrad.addColorStop(0, '#05060f')
-      bgGrad.addColorStop(0.6, '#02030a')
+      bgGrad.addColorStop(0, '#070914')
+      bgGrad.addColorStop(0.45, '#03040c')
+      bgGrad.addColorStop(0.85, '#010206')
       bgGrad.addColorStop(1, '#000000')
     } else {
-      bgGrad.addColorStop(0, '#4a7fb5')
-      bgGrad.addColorStop(0.6, '#2d5687')
-      bgGrad.addColorStop(1, '#16314f')
+      bgGrad.addColorStop(0, '#5a8fc5')
+      bgGrad.addColorStop(0.5, '#3a6a9e')
+      bgGrad.addColorStop(0.85, '#1d4068')
+      bgGrad.addColorStop(1, '#0f2440')
     }
     ctx.fillStyle = bgGrad
     ctx.beginPath()
     ctx.arc(cx, cy, radius, 0, Math.PI * 2)
     ctx.fill()
+
+    // Atmospheric horizon glow (subtle ring near edge when night)
+    if (isNight) {
+      const horizonGrad = ctx.createRadialGradient(cx, cy, radius * 0.7, cx, cy, radius)
+      horizonGrad.addColorStop(0, 'rgba(0,0,0,0)')
+      horizonGrad.addColorStop(0.7, 'rgba(40,50,80,0.15)')
+      horizonGrad.addColorStop(1, 'rgba(80,90,140,0.35)')
+      ctx.fillStyle = horizonGrad
+      ctx.beginPath()
+      ctx.arc(cx, cy, radius, 0, Math.PI * 2)
+      ctx.fill()
+    } else {
+      const horizonGrad = ctx.createRadialGradient(cx, cy, radius * 0.7, cx, cy, radius)
+      horizonGrad.addColorStop(0, 'rgba(0,0,0,0)')
+      horizonGrad.addColorStop(0.8, 'rgba(255,200,120,0.2)')
+      horizonGrad.addColorStop(1, 'rgba(255,170,80,0.45)')
+      ctx.fillStyle = horizonGrad
+      ctx.beginPath()
+      ctx.arc(cx, cy, radius, 0, Math.PI * 2)
+      ctx.fill()
+    }
 
     // outer ring
     ctx.lineWidth = 2
@@ -84,43 +118,96 @@ export function SkyMap({ className }: SkyMapProps) {
     ctx.arc(cx, cy, radius - 2, 0, Math.PI * 2)
     ctx.stroke()
 
-    // altitude rings
-    ctx.strokeStyle = isNight ? 'rgba(120,160,220,0.15)' : 'rgba(255,255,255,0.2)'
+    // altitude rings with degree labels
+    ctx.strokeStyle = isNight ? 'rgba(120,160,220,0.18)' : 'rgba(255,255,255,0.22)'
     ctx.lineWidth = 1
-    for (const alt of [30, 60]) {
+    for (const alt of [15, 30, 45, 60, 75]) {
       const r = radius * ((90 - alt) / 90)
       ctx.beginPath()
       ctx.arc(cx, cy, r, 0, Math.PI * 2)
       ctx.stroke()
+      // degree label at top
+      if (v.showGrid) {
+        ctx.font = '9px ui-sans-serif, system-ui'
+        ctx.fillStyle = isNight ? 'rgba(140,170,220,0.45)' : 'rgba(255,255,255,0.5)'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(`${alt}°`, cx, cy - r)
+      }
     }
-    // zenith marker
-    ctx.fillStyle = isNight ? 'rgba(150,180,230,0.5)' : 'rgba(255,255,255,0.6)'
+    // zenith marker (cross)
+    ctx.strokeStyle = isNight ? 'rgba(180,200,240,0.6)' : 'rgba(255,255,255,0.7)'
+    ctx.lineWidth = 1.5
     ctx.beginPath()
-    ctx.arc(cx, cy, 2, 0, Math.PI * 2)
+    ctx.moveTo(cx - 5, cy)
+    ctx.lineTo(cx + 5, cy)
+    ctx.moveTo(cx, cy - 5)
+    ctx.lineTo(cx, cy + 5)
+    ctx.stroke()
+    ctx.fillStyle = isNight ? 'rgba(180,200,240,0.7)' : 'rgba(255,255,255,0.8)'
+    ctx.beginPath()
+    ctx.arc(cx, cy, 1.5, 0, Math.PI * 2)
     ctx.fill()
 
-    // azimuth labels
-    ctx.font = 'bold 12px ui-sans-serif, system-ui'
-    ctx.fillStyle = isNight ? 'rgba(180,200,240,0.7)' : 'rgba(255,255,255,0.85)'
+    // azimuth compass — cardinal + intercardinal directions
+    ctx.font = 'bold 13px ui-sans-serif, system-ui'
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
     const dirs = [
-      { label: 'S', az: 0 },
-      { label: 'W', az: 90 },
-      { label: 'N', az: 180 },
-      { label: 'E', az: 270 },
+      { label: 'S', az: 0, primary: true },
+      { label: 'W', az: 90, primary: true },
+      { label: 'N', az: 180, primary: true },
+      { label: 'E', az: 270, primary: true },
+      { label: 'SV', az: 45, primary: false },
+      { label: 'JZ', az: 135, primary: false },
+      { label: 'JV', az: 225, primary: false },
+      { label: 'SZ', az: 315, primary: false },
     ]
     for (const d of dirs) {
       const ang = ((d.az - v.az + 360) % 360) * (Math.PI / 180)
-      const rr = radius - 14
+      const rr = radius - (d.primary ? 14 : 12)
       const px = cx + rr * Math.sin(ang)
       const py = cy - rr * Math.cos(ang) * 0.9
+      ctx.font = d.primary ? 'bold 13px ui-sans-serif, system-ui' : '9px ui-sans-serif, system-ui'
+      if (d.primary) {
+        ctx.fillStyle = isNight ? 'rgba(200,220,250,0.85)' : 'rgba(255,255,255,0.95)'
+      } else {
+        ctx.fillStyle = isNight ? 'rgba(140,160,200,0.5)' : 'rgba(255,255,255,0.6)'
+      }
       ctx.fillText(d.label, px, py)
     }
 
     // compute LST
     const now = new Date()
     const lst = localSiderealTime(now, v.lng)
+
+    // Milky Way band (rendered before stars, with soft glow)
+    if (v.showMilkyWay && isNight) {
+      ctx.save()
+      ctx.beginPath()
+      ctx.arc(cx, cy, radius - 3, 0, Math.PI * 2)
+      ctx.clip()
+      // draw connected band points as a thick translucent polyline
+      ctx.lineCap = 'round'
+      ctx.lineJoin = 'round'
+      for (const pt of milkyWayPoints) {
+        const altAz = equatorialToHorizontal(pt.ra, pt.dec, lst, v.lat)
+        if (altAz.alt < -3) continue
+        const p = projectAltAz(altAz, v.az, radius)
+        const dist = Math.hypot(p.x - cx, p.y - cy)
+        if (dist > radius) continue
+        const r = 18 * Math.sqrt(v.zoom)
+        const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r)
+        grad.addColorStop(0, `rgba(180,190,230,${0.05 + pt.intensity * 0.12})`)
+        grad.addColorStop(0.5, `rgba(160,170,220,${0.03 + pt.intensity * 0.06})`)
+        grad.addColorStop(1, 'rgba(0,0,0,0)')
+        ctx.fillStyle = grad
+        ctx.beginPath()
+        ctx.arc(p.x, p.y, r, 0, Math.PI * 2)
+        ctx.fill()
+      }
+      ctx.restore()
+    }
 
     // field stars (faint)
     for (const fs of fieldStars) {
@@ -140,8 +227,39 @@ export function SkyMap({ className }: SkyMapProps) {
       ctx.fill()
     }
 
-    // bright stars
-    for (const star of BRIGHT_STARS) {
+    // Constellation lines (drawn under bright stars)
+    if (v.showConstellations) {
+      ctx.save()
+      ctx.beginPath()
+      ctx.arc(cx, cy, radius - 3, 0, Math.PI * 2)
+      ctx.clip()
+      ctx.strokeStyle = isNight
+        ? 'rgba(110,180,220,0.35)'
+        : 'rgba(255,255,255,0.45)'
+      ctx.lineWidth = 1
+      ctx.setLineDash([])
+      for (const line of CONSTELLATION_LINES) {
+        const s1 = starMap.get(line.from)
+        const s2 = starMap.get(line.to)
+        if (!s1 || !s2) continue
+        const a1 = equatorialToHorizontal(s1.ra, s1.dec, lst, v.lat)
+        const a2 = equatorialToHorizontal(s2.ra, s2.dec, lst, v.lat)
+        if (a1.alt < -2 || a2.alt < -2) continue
+        const p1 = projectAltAz(a1, v.az, radius)
+        const p2 = projectAltAz(a2, v.az, radius)
+        const d1 = Math.hypot(p1.x - cx, p1.y - cy)
+        const d2 = Math.hypot(p2.x - cx, p2.y - cy)
+        if (d1 > radius && d2 > radius) continue
+        ctx.beginPath()
+        ctx.moveTo(p1.x, p1.y)
+        ctx.lineTo(p2.x, p2.y)
+        ctx.stroke()
+      }
+      ctx.restore()
+    }
+
+    // bright stars (use ALL_STARS which includes extras for constellations)
+    for (const star of ALL_STARS) {
       const altAz = equatorialToHorizontal(star.ra, star.dec, lst, v.lat)
       if (altAz.alt < -2) continue
       const p = projectAltAz(altAz, v.az, radius)
@@ -169,6 +287,42 @@ export function SkyMap({ className }: SkyMapProps) {
         ctx.textAlign = 'left'
         ctx.textBaseline = 'alphabetic'
         ctx.fillText(star.name, p.x + r + 2, p.y)
+      }
+    }
+
+    // Planets (rendered as colored discs with symbol)
+    if (v.showPlanets) {
+      for (const planet of PLANETS) {
+        const altAz = equatorialToHorizontal(planet.ra, planet.dec, lst, v.lat)
+        if (altAz.alt < -2) continue
+        const p = projectAltAz(altAz, v.az, radius)
+        if (!p.visible) continue
+        const dist = Math.hypot(p.x - cx, p.y - cy)
+        if (dist > radius) continue
+        const r = magnitudeToRadius(planet.mag, v.zoom) * 1.2
+        // glow ring
+        const glow = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r * 3)
+        glow.addColorStop(0, planet.color)
+        glow.addColorStop(1, 'rgba(0,0,0,0)')
+        ctx.globalAlpha = isNight ? 0.5 : 0.7
+        ctx.fillStyle = glow
+        ctx.beginPath()
+        ctx.arc(p.x, p.y, r * 3, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.globalAlpha = 1
+        // core
+        ctx.fillStyle = planet.color
+        ctx.beginPath()
+        ctx.arc(p.x, p.y, r, 0, Math.PI * 2)
+        ctx.fill()
+        // symbol + label
+        if (v.showLabels) {
+          ctx.font = '11px ui-sans-serif, system-ui'
+          ctx.fillStyle = planet.color
+          ctx.textAlign = 'left'
+          ctx.textBaseline = 'middle'
+          ctx.fillText(`${planet.symbol} ${planet.name}`, p.x + r + 3, p.y)
+        }
       }
     }
 

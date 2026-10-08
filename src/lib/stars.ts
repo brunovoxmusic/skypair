@@ -98,6 +98,175 @@ export const BRIGHT_STARS: Star[] = [
 ]
 
 // ============================================================
+// Constellation lines: pairs of star names to connect
+// (Based on common asterism patterns)
+// ============================================================
+
+export interface ConstellationLine {
+  con: string
+  from: string
+  to: string
+}
+
+export const CONSTELLATION_LINES: ConstellationLine[] = [
+  // Ursa Major (Big Dipper)
+  { con: 'UMa', from: 'Dubhe', to: 'Merak' },
+  { con: 'UMa', from: 'Merak', to: 'Phecda' },
+  { con: 'UMa', from: 'Phecda', to: 'Megrez' },
+  { con: 'UMa', from: 'Megrez', to: 'Alioth' },
+  { con: 'UMa', from: 'Alioth', to: 'Mizar' },
+  { con: 'UMa', from: 'Mizar', to: 'Alkaid' },
+  { con: 'UMa', from: 'Megrez', to: 'Dubhe' },
+  // Orion
+  { con: 'Ori', from: 'Betegeuse', to: 'Bellatrix' },
+  { con: 'Ori', from: 'Bellatrix', to: 'Mintaka' },
+  { con: 'Ori', from: 'Mintaka', to: 'Alnilam' },
+  { con: 'Ori', from: 'Alnilam', to: 'Alnitak' },
+  { con: 'Ori', from: 'Alnitak', to: 'Saiph' },
+  { con: 'Ori', from: 'Saiph', to: 'Rigel' },
+  { con: 'Ori', from: 'Rigel', to: 'Mintaka' },
+  // Cassiopeia (W shape)
+  { con: 'Cas', from: 'Caph', to: 'Schedar' },
+  { con: 'Cas', from: 'Schedar', to: 'Gamma Cas' },
+  { con: 'Cas', from: 'Gamma Cas', to: 'Ruchbah' },
+  { con: 'Cas', from: 'Ruchbah', to: 'Segin' },
+  // Leo
+  { con: 'Leo', from: 'Regulus', to: 'Algieba' },
+  { con: 'Leo', from: 'Algieba', to: 'Zosma' },
+  { con: 'Leo', from: 'Zosma', to: 'Denebola' },
+  { con: 'Leo', from: 'Denebola', to: 'Regulus' },
+  // Scorpius
+  { con: 'Sco', from: 'Antares', to: 'Shaula' },
+  { con: 'Sco', from: 'Shaula', to: 'Sargas' },
+  // Lyra
+  { con: 'Lyr', from: 'Vega', to: 'Sheliak' },
+  { con: 'Lyr', from: 'Sheliak', to: 'Sulafat' },
+  { con: 'Lyr', from: 'Sulafat', to: 'Vega' },
+  // Cygnus (Northern Cross)
+  { con: 'Cyg', from: 'Deneb', to: 'Sadr' },
+  { con: 'Cyg', from: 'Sadr', to: 'Albireo' },
+  // Pegasus square
+  { con: 'Peg', from: 'Markab', to: 'Scheat' },
+  { con: 'Peg', from: 'Scheat', to: 'Alpheratz' },
+  { con: 'Peg', from: 'Alpheratz', to: 'Algenib' },
+  { con: 'Peg', from: 'Algenib', to: 'Markab' },
+  // Gemini
+  { con: 'Gem', from: 'Castor', to: 'Pollux' },
+  { con: 'Gem', from: 'Pollux', to: 'Alhena' },
+  // Canis Major
+  { con: 'CMa', from: 'Sirius', to: 'Mirzam' },
+  { con: 'CMa', from: 'Sirius', to: 'Adhara' },
+  { con: 'CMa', from: 'Adhara', to: 'Wezen' },
+  // Crux (Southern Cross)
+  { con: 'Cru', from: 'Acrux', to: 'Gacrux' },
+  // Centaurus
+  { con: 'Cen', from: 'Rigel Kentaurus', to: 'Hadar' },
+]
+
+// Add missing stars referenced by constellations
+export const EXTRA_STARS: Star[] = [
+  { name: 'Mintaka', con: 'Ori', ra: 5.5334, dec: -0.2991, mag: 2.23 },
+  { name: 'Saiph', con: 'Ori', ra: 5.7959, dec: -9.6696, mag: 2.09 },
+  { name: 'Gamma Cas', con: 'Cas', ra: 0.9451, dec: 60.7167, mag: 2.47 },
+  { name: 'Ruchbah', con: 'Cas', ra: 1.4302, dec: 60.2353, mag: 2.68 },
+  { name: 'Segin', con: 'Cas', ra: 1.9063, dec: 63.6701, mag: 3.38 },
+  { name: 'Zosma', con: 'Leo', ra: 11.2352, dec: 20.5237, mag: 2.56 },
+  { name: 'Sheliak', con: 'Lyr', ra: 18.8343, dec: 33.3627, mag: 3.52 },
+  { name: 'Sulafat', con: 'Lyr', ra: 18.9826, dec: 32.6896, mag: 3.25 },
+  { name: 'Albireo', con: 'Cyg', ra: 19.5121, dec: 27.9597, mag: 3.18 },
+  { name: 'Gacrux', con: 'Cru', ra: 12.5194, dec: -57.1131, mag: 1.63 },
+]
+
+// All stars merged (bright + extra)
+export const ALL_STARS: Star[] = [...BRIGHT_STARS, ...EXTRA_STARS]
+
+// ============================================================
+// Planets — simplified ephemeris (approximate positions for demo)
+// RA/Dec are approximate for a generic epoch; real apps would compute
+// ============================================================
+
+export interface Planet {
+  name: string
+  ra: number
+  dec: number
+  mag: number
+  color: string
+  symbol: string
+}
+
+// Static approximate positions (J2000-ish, demo only)
+export const PLANETS: Planet[] = [
+  { name: 'Merkúr', ra: 15.2, dec: -18.5, mag: -0.4, color: '#b8b8c8', symbol: '☿' },
+  { name: 'Venuša', ra: 14.8, dec: -16.2, mag: -4.2, color: '#f5e6c8', symbol: '♀' },
+  { name: 'Mars', ra: 7.4, dec: 24.8, mag: 0.8, color: '#e07856', symbol: '♂' },
+  { name: 'Jupiter', ra: 5.1, dec: 22.0, mag: -2.5, color: '#e8c898', symbol: '♃' },
+  { name: 'Saturn', ra: 22.8, dec: -8.5, mag: 0.4, color: '#dcc8a0', symbol: '♄' },
+]
+
+// ============================================================
+// Milky Way — approximate band points (galactic plane in RA/Dec)
+// ============================================================
+
+/** Generate points along the galactic plane for the Milky Way band */
+export function generateMilkyWayPoints(): { ra: number; dec: number; intensity: number }[] {
+  const pts: { ra: number; dec: number; intensity: number }[] = []
+  // Galactic plane roughly: l=0..360 → approximate RA/Dec
+  // Simplified: a great circle inclined ~63° to celestial equator
+  for (let l = 0; l < 360; l += 2) {
+    const lRad = (l * Math.PI) / 180
+    // Galactic center at RA~17.76h, Dec~-28.94°
+    const node = 282.85 * (Math.PI / 180) // RA of ascending node
+    const incl = 62.6 * (Math.PI / 180) // inclination
+    const raRad = node + Math.atan2(
+      Math.sin(lRad) * Math.cos(incl),
+      Math.cos(lRad),
+    )
+    const decRad = Math.asin(Math.sin(lRad) * Math.sin(incl))
+    // intensity peaks near galactic center (l~0) and anti-center (l~180)
+    const intensity = 0.4 + 0.6 * Math.abs(Math.cos(lRad))
+    pts.push({
+      ra: ((raRad * 12) / Math.PI + 24) % 24,
+      dec: (decRad * 180) / Math.PI,
+      intensity,
+    })
+  }
+  return pts
+}
+
+// ============================================================
+// Constellation metadata (names, visibility season)
+// ============================================================
+
+export interface ConstellationInfo {
+  abbr: string
+  name: string
+  nameSk: string
+  bestMonth: string
+}
+
+export const CONSTELLATIONS_INFO: ConstellationInfo[] = [
+  { abbr: 'UMa', name: 'Ursa Major', nameSk: 'Veľký medveď', bestMonth: 'Apríl' },
+  { abbr: 'Ori', name: 'Orion', nameSk: 'Orion', bestMonth: 'Január' },
+  { abbr: 'Cas', name: 'Cassiopeia', nameSk: 'Kasiopea', bestMonth: 'November' },
+  { abbr: 'Leo', name: 'Leo', nameSk: 'Lev', bestMonth: 'Apríl' },
+  { abbr: 'Sco', name: 'Scorpius', nameSk: 'Škorpión', bestMonth: 'Júl' },
+  { abbr: 'Lyr', name: 'Lyra', nameSk: 'Lýra', bestMonth: 'August' },
+  { abbr: 'Cyg', name: 'Cygnus', nameSk: 'Labuť', bestMonth: 'September' },
+  { abbr: 'Peg', name: 'Pegasus', nameSk: 'Pegas', bestMonth: 'Október' },
+  { abbr: 'Gem', name: 'Gemini', nameSk: 'Blíženci', bestMonth: 'Február' },
+  { abbr: 'CMa', name: 'Canis Major', nameSk: 'Veľký pes', bestMonth: 'Január' },
+  { abbr: 'Cru', name: 'Crux', nameSk: 'Južný kríž', bestMonth: 'Máj' },
+  { abbr: 'Cen', name: 'Centaurus', nameSk: 'Kentaur', bestMonth: 'Máj' },
+  { abbr: 'Tau', name: 'Taurus', nameSk: 'Býk', bestMonth: 'December' },
+  { abbr: 'Boo', name: 'Bootes', nameSk: 'Pastier', bestMonth: 'Jún' },
+  { abbr: 'Vir', name: 'Virgo', nameSk: 'Panna', bestMonth: 'Máj' },
+  { abbr: 'Aur', name: 'Auriga', nameSk: 'Auriga', bestMonth: 'Január' },
+  { abbr: 'Per', name: 'Perseus', nameSk: 'Perzeus', bestMonth: 'December' },
+  { abbr: 'And', name: 'Andromeda', nameSk: 'Androméda', bestMonth: 'November' },
+  { abbr: 'Sgr', name: 'Sagittarius', nameSk: 'Strelec', bestMonth: 'August' },
+]
+
+// ============================================================
 // Simple celestial coordinate -> projected (x,y) on a circular sky map
 // Uses stereographic projection centered on zenith (azimuthal equidistant)
 // Input: observer's local sidereal time (LST in hours), observer latitude

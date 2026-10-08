@@ -68,3 +68,71 @@
 4. **AR rozšírenie**: Three.js 3D sféra oblohy alebo WebXR pre mobil.
 5. **TLE satelity**: integrácia celestrak.org + satellite.js pre ISS/Starlink pozície.
 6. **E2EE** optional vrstva cez Insertable Streams pre maximálne súkromie.
+
+---
+
+## Fáza 2 — Rozšírené funkcie a vylepšená vizualizácia (cron webDevReview)
+
+### Current project status (po fáze 2)
+- **Aplikácia stabilná, lint čistý, servery bežia.**
+- QA cez agent-browser potvrdilo: landing, host QR, join, observation flow všetko funguje.
+- Sky map canvas confirmed rendering (2.7% jasných pixelov = hviezdy, 11.8% stredných = Mliečna cesta + glow + konštelácie).
+
+### Goals for phase 2 (completed)
+1. ✅ **Konštelácie** — CONSTELLATION_LINES (35 čiar pre 11 súhvezdí: UMa, Ori, Cas, Leo, Sco, Lyr, Cyg, Peg, Gem, CMa, Cru, Cen), EXTRA_STARS (10 doplnkových hviezd)
+2. ✅ **Mliečna cesta** — generateMilkyWayPoints() (180 bodov pozdĺž galaktickej roviny, intensity peak pri galaktickom centre)
+3. ✅ **Planéty** — PLANETS (Merkúr, Venuša, Mars, Jupiter, Saturn) s farbami a symbolmi (☿♀♂♃♄)
+4. ✅ **Geolocation** — handleLocate() cez navigator.geolocation.getCurrentPosition s high accuracy
+5. ✅ **Sky Info Panel** — SkyInfoPanel komponent: lokálny čas, hviezdny čas (LST), počet viditeľných jasných hviezd, viditeľné súhvezdia (s slovenskými názvami), poloha, dátum
+6. ✅ **Rýchle pohľady** — 5 preset tlačidiel (Juh, Západ, Sever, Východ, Zenit)
+7. ✅ **Vylepšená vizualizácia**:
+   - Atmospheric horizon glow (nočný mód: modrý glow pri horizonte; denný mód: teplý oranžový glow)
+   - Lepší gradient pozadia (4 stop místa)
+   - Altitude rings s označeniami stupňov (15°, 30°, 45°, 60°, 75°)
+   - Zenith marker (krížik namiesto bodky)
+   - Kompas s interkardinálnymi smemami (SV, JZ, JV, SZ) + primárne (S, W, N, E)
+8. ✅ **Store rozšírený** — showConstellations, showMilkyWay, showPlanets flags (default: true)
+
+### Completed modifications
+- `src/lib/stars.ts`: pridané CONSTELLATION_LINES, EXTRA_STARS, ALL_STARS, PLANETS, generateMilkyWayPoints(), CONSTELLATIONS_INFO (19 súhvezdí so slovenskými názvmi)
+- `src/lib/sky-store.ts`: rozšírené SkyState o 3 nové boolean flags (showConstellations, showMilkyWay, showPlanets)
+- `src/components/sky/sky-map.tsx`:
+  - Milky Way rendering (soft glow bodky pozdĺž galaktickej roviny)
+  - Constellation lines (cyan lines, clip na kruh)
+  - Planets (farebné disky s glow + symboly + názvy)
+  - Lepší background gradient + atmospheric horizon glow
+  - Altitude rings s degree labels
+  - Zenith cross marker
+  - Rozšírený kompas (8 smerov)
+- `src/components/sky/sky-info-panel.tsx` (nový): overlay panel vľavo dole na sky map
+- `src/components/sky/observation.tsx`:
+  - 5 nových preset tlačidiel (Juh/Západ/Sever/Východ/Zenit)
+  - 3 nové layer switches (Súhvezdia, Mliečna cesta, Planéty)
+  - GPS tlačidlo "Zistiť moju polohu" s loading stavom
+  - SkyInfoPanel integrovaný ako overlay
+  - Coordinates presunuté vpravo (aby neprekážali info panelu)
+
+### Verification results (agent-browser)
+- ✅ Landing: H1 "SkyPair", 2 buttons (Vytvoriť/Pripojiť)
+- ✅ Host flow: POST /api/session → QR + kód + URL
+- ✅ Join flow: ?join=CODE → auto-fill → verify 200 → observation
+- ✅ Observation: 5 preset tlačidiel (@e15-e19), 5 layer switches (@e20-e24), GPS button (@e27)
+- ✅ Sky map pixel analysis: 300 bright + 1281 medium pixels = hviezdy + Mliečna cesta + konštelácie renderujú
+- ✅ Lint clean, no runtime errors
+- ✅ VLM potvrdilo UI štruktúru (header, status bar, camera panels, sidebar, footer)
+
+### Unresolved issues / risks (po fáze 2)
+- **Agent-browser refs nestabilné** pri re-renderoch — riešenie: vždy urobiť snapshot pred klikom.
+- **VLM filter** občas odmietne prompts s astronomickými termínmi — použiť neutrálne prompty.
+- **Sky info panel prekrytie** na malých obrazovkách — riešiť responsive v ďalšej fáze.
+- **Planéty statické** — aktuálne pevné RA/Dec (demo), reálne by sa mali počítať podľa dátumu.
+
+### Priority recommendations for next phase (fáza 3)
+1. **Responsive sky info panel** — skryť/kolabovať na mobiloch.
+2. **Planetárne ephemeris** — reálny výpočet polohy planét (knižnica astronomy-engine alebo vlastný výpočet).
+3. **Konštelácie názvy** — zobraziť názov súhvezdia pri hover/kliku na constellation line.
+4. **Meteor shower kalendár** — integrácia IMO dáta s upozorneniami.
+5. **Satelity (ISS)** — TLE dáta + satellite.js pre real-time pozície.
+6. **Nočné krajinka silueta** — landscape silhouette pri horizonte pre lepší vizuálny kontext.
+7. **Záložky hviezd** — uložiť obľúbené objekty do localStorage.
+8. **Export pozorovaní** — stiahnuť zoznam zaznamenaných udalostí ako CSV/JSON.

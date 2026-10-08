@@ -11,6 +11,9 @@ export interface SkyState {
   mode: 'day' | 'night'
   showGrid: boolean
   showLabels: boolean
+  showConstellations: boolean
+  showMilkyWay: boolean
+  showPlanets: boolean
   followPeer: boolean
 }
 
@@ -71,6 +74,9 @@ const DEFAULT_VIEW: SkyState = {
   mode: 'night',
   showGrid: true,
   showLabels: true,
+  showConstellations: true,
+  showMilkyWay: true,
+  showPlanets: true,
   followPeer: true,
 }
 

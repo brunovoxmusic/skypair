@@ -19,6 +19,12 @@ import {
   Link2,
   Radio,
   Loader2,
+  Orbit,
+  LocateFixed,
+  Spline,
+  Stars,
+  Compass,
+  Info,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -29,6 +35,7 @@ import { Switch } from '@/components/ui/switch'
 import { Separator } from '@/components/ui/separator'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { SkyMap } from './sky-map'
+import { SkyInfoPanel } from './sky-info-panel'
 import { useSkyStore } from '@/lib/sky-store'
 import { formatCode } from '@/lib/sky-utils'
 
@@ -132,6 +139,37 @@ export function Observation(props: ObservationProps) {
     [addEvent, onSkyEvent, incMeteor],
   )
 
+  const [locating, setLocating] = useState(false)
+  const handleLocate = useCallback(() => {
+    if (!('geolocation' in navigator)) {
+      addChat({ id: 'geo-err-' + Date.now(), text: 'Geolokácia nie je podporovaná v tomto prehliadači.', from: 'system', at: Date.now() })
+      return
+    }
+    setLocating(true)
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setView({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+        addChat({
+          id: 'geo-ok-' + Date.now(),
+          text: `Poloha nastavená: ${pos.coords.latitude.toFixed(3)}°, ${pos.coords.longitude.toFixed(3)}°`,
+          from: 'system',
+          at: Date.now(),
+        })
+        setLocating(false)
+      },
+      (err) => {
+        addChat({
+          id: 'geo-err-' + Date.now(),
+          text: 'Geolokácia zamietnutá alebo nedostupná: ' + (err.message || 'neznáma chyba'),
+          from: 'system',
+          at: Date.now(),
+        })
+        setLocating(false)
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
+    )
+  }, [setView, addChat])
+
   const pcConnected = pcState === 'connected'
 
   return (
@@ -169,14 +207,18 @@ export function Observation(props: ObservationProps) {
               </Button>
             </div>
           </div>
-          {/* Bottom overlay: coordinates */}
-          <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between gap-2 z-10 pointer-events-none">
+          {/* Sky info panel — bottom-left overlay */}
+          <div className="absolute bottom-3 left-3 z-10 w-56 max-w-[55%] pointer-events-auto opacity-95">
+            <SkyInfoPanel />
+          </div>
+          {/* Bottom overlay: coordinates (right-aligned) */}
+          <div className="absolute bottom-3 right-3 z-10 pointer-events-none">
             <div className="flex items-center gap-2 text-xs text-white/70 font-mono backdrop-blur bg-black/30 px-2 py-1 rounded">
               <span>AZ {view.az.toFixed(0)}°</span>
               <span>ALT {view.alt.toFixed(0)}°</span>
               <span>×{view.zoom.toFixed(1)}</span>
             </div>
-            <div className="flex items-center gap-2 text-xs text-white/70 backdrop-blur bg-black/30 px-2 py-1 rounded">
+            <div className="flex items-center gap-2 text-xs text-white/70 backdrop-blur bg-black/30 px-2 py-1 rounded mt-1 justify-end">
               <span>{view.mode === 'night' ? 'Noc' : 'Deň'}</span>
             </div>
           </div>
@@ -342,6 +384,30 @@ export function Observation(props: ObservationProps) {
               </div>
             </div>
 
+            {/* Quick view presets */}
+            <div className="space-y-1.5">
+              <label className="text-xs text-muted-foreground flex items-center gap-1">
+                <Compass className="w-3 h-3" /> Rýchle pohľady
+              </label>
+              <div className="grid grid-cols-5 gap-1">
+                <Button variant="outline" size="sm" className="h-7 px-1 text-[10px]" onClick={() => setView({ az: 0, alt: 15 })}>
+                  Juh
+                </Button>
+                <Button variant="outline" size="sm" className="h-7 px-1 text-[10px]" onClick={() => setView({ az: 90, alt: 15 })}>
+                  Západ
+                </Button>
+                <Button variant="outline" size="sm" className="h-7 px-1 text-[10px]" onClick={() => setView({ az: 180, alt: 15 })}>
+                  Sever
+                </Button>
+                <Button variant="outline" size="sm" className="h-7 px-1 text-[10px]" onClick={() => setView({ az: 270, alt: 15 })}>
+                  Východ
+                </Button>
+                <Button variant="outline" size="sm" className="h-7 px-1 text-[10px]" onClick={() => setView({ az: 0, alt: 85 })}>
+                  Zenit
+                </Button>
+              </div>
+            </div>
+
             <Separator />
 
             <div className="space-y-2">
@@ -358,6 +424,27 @@ export function Observation(props: ObservationProps) {
                   Názvy hviezd
                 </label>
                 <Switch checked={view.showLabels} onCheckedChange={(c) => setView({ showLabels: c })} />
+              </div>
+              <div className="flex items-center justify-between">
+                <label className="text-sm flex items-center gap-1.5">
+                  <Spline className="w-3.5 h-3.5 text-sky-400" />
+                  Súhvezdia
+                </label>
+                <Switch checked={view.showConstellations} onCheckedChange={(c) => setView({ showConstellations: c })} />
+              </div>
+              <div className="flex items-center justify-between">
+                <label className="text-sm flex items-center gap-1.5">
+                  <Stars className="w-3.5 h-3.5 text-violet-300" />
+                  Mliečna cesta
+                </label>
+                <Switch checked={view.showMilkyWay} onCheckedChange={(c) => setView({ showMilkyWay: c })} />
+              </div>
+              <div className="flex items-center justify-between">
+                <label className="text-sm flex items-center gap-1.5">
+                  <Orbit className="w-3.5 h-3.5 text-amber-400" />
+                  Planéty
+                </label>
+                <Switch checked={view.showPlanets} onCheckedChange={(c) => setView({ showPlanets: c })} />
               </div>
             </div>
 
@@ -381,6 +468,13 @@ export function Observation(props: ObservationProps) {
                 className="h-8 text-xs"
               />
             </div>
+            <Button variant="outline" size="sm" className="w-full" onClick={handleLocate} disabled={locating}>
+              {locating ? (
+                <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Zisťujem polohu…</>
+              ) : (
+                <><LocateFixed className="w-3.5 h-3.5 mr-1.5" /> Zistiť moju polohu (GPS)</>
+              )}
+            </Button>
             <p className="text-[10px] text-muted-foreground">
               Predvolené: Bratislava (48.15°N, 17.11°E). Zmeňte pre svoju polohu.
             </p>
