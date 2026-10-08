@@ -38,6 +38,9 @@ import {
   Save,
   X,
   Share2,
+  Maximize,
+  Minimize,
+  Printer,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -57,10 +60,12 @@ import { SearchPanel, type SearchResult } from './search-panel'
 import { OnboardingOverlay } from './onboarding-overlay'
 import { HelpPanel } from './help-panel'
 import { ShortcutsOverlay } from './shortcuts-overlay'
+import { SharedObservationsModal } from './shared-observations-modal'
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts'
 import { useObservationHistory } from '@/hooks/use-observation-history'
+import { useFullscreen } from '@/hooks/use-fullscreen'
 import { useSkyStore } from '@/lib/sky-store'
-import { formatCode } from '@/lib/sky-utils'
+import { formatCode, parseSharedFromUrl, cleanSharedFromUrl, type SharedObservationData } from '@/lib/sky-utils'
 import { ALL_STARS, localSiderealTime, equatorialToHorizontal } from '@/lib/stars'
 import { MESSIER_CATALOG } from '@/lib/deep-sky'
 
@@ -203,6 +208,42 @@ export function Observation(props: ObservationProps) {
   const [selectedStar, setSelectedStar] = useState<StarInfo | null>(null)
   const [selectedDso, setSelectedDso] = useState<DeepSkyInfo | null>(null)
   const [selectedConstellation, setSelectedConstellation] = useState<ConstellationInfo | null>(null)
+  const [sharedObservations, setSharedObservations] = useState<SharedObservationData | null>(null)
+  const { isFullscreen, toggle: toggleFullscreen } = useFullscreen()
+  const skyMapCardRef = useRef<HTMLDivElement | null>(null)
+  // Parse ?obs= shared observations on mount
+  useEffect(() => {
+    const shared = parseSharedFromUrl()
+    if (shared) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSharedObservations(shared)
+      cleanSharedFromUrl()
+    }
+  }, [])
+  // Import shared observations into current events
+  const handleImportShared = useCallback(() => {
+    if (!sharedObservations) return
+    for (const e of sharedObservations.events) {
+      addEvent({
+        id: Math.random().toString(36).slice(2),
+        type: e.type as any,
+        x: 0,
+        y: 0,
+        label: e.label || undefined,
+        at: new Date(e.time).getTime(),
+      })
+    }
+    if (sharedObservations.location) {
+      setView({ lat: sharedObservations.location.lat, lng: sharedObservations.location.lng })
+    }
+    addChat({
+      id: 'import-ok-' + Date.now(),
+      text: `Importovaných ${sharedObservations.events.length} pozorovaní zo zdieľaného linku.`,
+      from: 'system',
+      at: Date.now(),
+    })
+    setSharedObservations(null)
+  }, [sharedObservations, addEvent, setView, addChat])
   const handleLocate = useCallback(() => {
     if (!('geolocation' in navigator)) {
       addChat({ id: 'geo-err-' + Date.now(), text: 'Geolokácia nie je podporovaná v tomto prehliadači.', from: 'system', at: Date.now() })
@@ -427,6 +468,53 @@ export function Observation(props: ObservationProps) {
     }
   }, [events, code, view.lat, view.lng, meteorCount, addChat])
 
+  const handlePrint = useCallback(() => {
+    if (events.length === 0) {
+      addChat({ id: 'print-err-' + Date.now(), text: 'Žiadne pozorovania na tlač.', from: 'system', at: Date.now() })
+      return
+    }
+    const printWin = window.open('', '_blank', 'width=800,height=600')
+    if (!printWin) return
+    const rows = events.map((e) => `
+      <tr>
+        <td>${e.type}</td>
+        <td>${new Date(e.at).toLocaleString('sk-SK')}</td>
+        <td>${e.label || ''}</td>
+      </tr>`).join('')
+    printWin.document.write(`
+      <html>
+      <head>
+        <title>SkyPair pozorovania — ${code}</title>
+        <style>
+          body { font-family: -apple-system, sans-serif; padding: 2rem; color: #1a1a1a; }
+          h1 { color: #059669; border-bottom: 2px solid #059669; padding-bottom: 0.5rem; }
+          table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+          th, td { border: 1px solid #ddd; padding: 0.5rem; text-align: left; }
+          th { background: #f3f4f6; }
+          .meta { color: #666; font-size: 0.875rem; margin-bottom: 1rem; }
+        </style>
+      </head>
+      <body>
+        <h1>SkyPair — Pozorovania oblohy</h1>
+        <div class="meta">
+          <p>Kód relácie: <strong>${code.slice(0, 3)}-${code.slice(3)}</strong></p>
+          <p>Dátum generovania: ${new Date().toLocaleString('sk-SK')}</p>
+          <p>Poloha: ${view.lat.toFixed(2)}°, ${view.lng.toFixed(2)}°</p>
+          <p>Počet udalostí: ${events.length} (meteorov: ${meteorCount})</p>
+        </div>
+        <table>
+          <thead>
+            <tr><th>Typ</th><th>Čas</th><th>Názov</th></tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </body>
+      </html>`)
+    printWin.document.close()
+    printWin.focus()
+    printWin.print()
+  }, [events, code, view.lat, view.lng, meteorCount, addChat])
+
   const pcConnected = pcState === 'connected'
 
   return (
@@ -435,7 +523,7 @@ export function Observation(props: ObservationProps) {
       <OnboardingOverlay />
       {/* LEFT: Sky map + video */}
       <div className="flex flex-col gap-3 sm:gap-4 min-w-0">
-        <Card className="flex-1 min-h-[360px] sm:min-h-[460px] relative overflow-hidden bg-[#02030a] border-emerald-500/20">
+        <Card ref={skyMapCardRef} className={`flex-1 min-h-[360px] sm:min-h-[460px] relative overflow-hidden bg-[#02030a] border-emerald-500/20 ${isFullscreen ? 'fixed inset-0 z-40 rounded-none m-0 p-0 min-h-screen' : ''}`}>
           <CardContent className="p-0 h-full absolute inset-0 flex items-center justify-center">
             <div className="w-full h-full max-w-[640px] max-h-[640px] aspect-square mx-auto p-2">
               <SkyMap
@@ -505,6 +593,16 @@ export function Observation(props: ObservationProps) {
             <div className="flex items-center gap-1.5 pointer-events-auto">
               <HelpPanel />
               <ShortcutsOverlay />
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8 text-white/70 hover:text-white hover:bg-white/10"
+                onClick={() => toggleFullscreen(skyMapCardRef.current)}
+                title={isFullscreen ? 'Opustiť fullscreen (Esc)' : 'Fullscreen obloha'}
+                aria-label="Prepnúť fullscreen"
+              >
+                {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
+              </Button>
               <Button
                 size="icon"
                 variant="ghost"
@@ -922,6 +1020,9 @@ export function Observation(props: ObservationProps) {
                 <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handleShareLink} title="Zdieľať ako link" disabled={events.length === 0}>
                   <Share2 className="w-3.5 h-3.5" />
                 </Button>
+                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handlePrint} title="Vytlačiť pozorovania" disabled={events.length === 0}>
+                  <Printer className="w-3.5 h-3.5" />
+                </Button>
                 <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setShowHistory(true)} title="Zobraziť históriu">
                   <History className="w-3.5 h-3.5" />
                 </Button>
@@ -1101,6 +1202,13 @@ export function Observation(props: ObservationProps) {
           </motion.div>
         </motion.div>
       )}
+
+      {/* Shared observations modal */}
+      <SharedObservationsModal
+        data={sharedObservations}
+        onClose={() => setSharedObservations(null)}
+        onImport={handleImportShared}
+      />
     </div>
   )
 }

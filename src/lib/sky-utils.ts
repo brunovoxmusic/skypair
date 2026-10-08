@@ -75,3 +75,52 @@ export function signalingSocketOptions() {
     timeout: 10_000,
   }
 }
+
+// ============================================================
+// Shared observations — encode/decode via base64 URL parameter
+// ============================================================
+
+export interface SharedObservationData {
+  v: number
+  code?: string
+  date: string
+  location?: { lat: number; lng: number }
+  meteorCount?: number
+  events: { type: string; time: string; label?: string | null }[]
+}
+
+/** Encode shared observations into a base64 URL-safe string */
+export function encodeSharedObservations(data: SharedObservationData): string {
+  const json = JSON.stringify(data)
+  return btoa(encodeURIComponent(json))
+}
+
+/** Decode shared observations from a base64 URL-safe string */
+export function decodeSharedObservations(encoded: string): SharedObservationData | null {
+  try {
+    const json = decodeURIComponent(atob(encoded))
+    const data = JSON.parse(json)
+    if (!data || !Array.isArray(data.events)) return null
+    return data as SharedObservationData
+  } catch {
+    return null
+  }
+}
+
+/** Parse ?obs= parameter from current URL */
+export function parseSharedFromUrl(): SharedObservationData | null {
+  if (typeof window === 'undefined') return null
+  const params = new URLSearchParams(window.location.search)
+  const obs = params.get('obs')
+  if (!obs) return null
+  return decodeSharedObservations(obs)
+}
+
+/** Remove ?obs= from URL without reloading */
+export function cleanSharedFromUrl() {
+  if (typeof window === 'undefined') return
+  const url = new URL(window.location.href)
+  url.searchParams.delete('obs')
+  window.history.replaceState({}, '', url.toString())
+}
+

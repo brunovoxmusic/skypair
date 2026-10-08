@@ -576,3 +576,58 @@
 6. **PWA support** — Service Worker pre offline fungovanie.
 7. **Fullscreen mode** — tlačidlo pre fullscreen sky map.
 8. **Print friendly** — tlačiteľná verzia pozorovaní.
+
+---
+
+## Fáza 11 — Parse zdieľaného linku, fullscreen, print (cron webDevReview)
+
+### Current project status (po fáze 11)
+- **Aplikácia stabilná, lint čistý.**
+- QA cez agent-browser potvrdilo: Shared observations modal sa automaticky otvoril pri URL s `?obs=` parametrom ("Zdieľané pozorovania" s kódom LGN-4GG, dátumom, polohou, 2 meteorov), "Prepnúť fullscreen" button (@e62), "Vytlačiť pozorovania" button (@e41).
+- Sky map renderuje (280 bright + 1317 medium pixelov).
+
+### Goals for phase 11 (completed)
+1. ✅ **Parse zdieľaného linku** — `parseSharedFromUrl()`, `decodeSharedObservations()`, `cleanSharedFromUrl()` v sky-utils.ts; pri otvorení URL s `?obs=` parameter sa automaticky dekóduje a zobrazí SharedObservationsModal; "Importovať do aktuálnej relácie" pridá pozorovania do events
+2. ✅ **SharedObservationsModal** komponent — modal s metadátami (kód, dátum, poloha, počet meteorov), zoznam eventov s ikonami a farbami podľa typu, "Importovať" button
+3. ✅ **Fullscreen mode** — `useFullscreen` hook (Fullscreen API s webkit fallback), Maximize/Minimize ikona v top bare, sky map card prejde do fullscreen (fixed inset-0)
+4. ✅ **Print friendly** — `handlePrint()` otvorí nové okno s HTML tabuľkou pozorovaní (kód, dátum, poloha, events), Printer ikona button v Events karte
+
+### Completed modifications
+- `src/lib/sky-utils.ts`: pridané `SharedObservationData` interface, `encodeSharedObservations()`, `decodeSharedObservations()`, `parseSharedFromUrl()`, `cleanSharedFromUrl()`
+- `src/components/sky/shared-observations-modal.tsx` (nový): SharedObservationsModal s metadátami, event list, "Importovať" button
+- `src/hooks/use-fullscreen.ts` (nový): useFullscreen hook (enter/exit/toggle, isFullscreen state, fullscreenchange listener)
+- `src/components/sky/observation.tsx`:
+  - Importy: SharedObservationsModal, useFullscreen, Maximize, Minimize, Printer, parseSharedFromUrl, cleanSharedFromUrl, SharedObservationData
+  - `sharedObservations` state + useEffect parse na mount
+  - `handleImportShared` — pridá eventy z shared do aktuálnych, nastaví polohu
+  - `handlePrint` — otvorí print okno s HTML tabuľkou
+  - `skyMapCardRef` + useFullscreen toggleFullscreen
+  - Fullscreen button v top bare (Maximize/Minimize)
+  - Print button v Events karte (Printer)
+  - SharedObservationsModal na konci JSX
+
+### Verification results (agent-browser)
+- ✅ Shared observations modal sa automaticky otvoril pri URL s `?obs=` parametrom
+- ✅ Modal zobrazil: kód "LGN-4GG", dátum "8. 10. 2026 10:00:00", poloha "48.15°, 17.11°", 2 meteory
+- ✅ "Prepnúť fullscreen" button (@e62) prítomný
+- ✅ "Vytlačiť pozorovania" button (@e41, disabled keď žiadne events)
+- ✅ Sky map pixel analysis: 280 bright + 1317 medium = hviezdy + deep-sky renderujú
+- ✅ Lint clean, no runtime errors
+- ✅ POST /api/session/verify 200, GET / 200
+
+### Unresolved issues / risks (po fáze 11)
+- **Agent-browser session veľmi nestabilná** — po 1-2 interakciách sa stratí; riešenie: všetky testy v jednom bash volaní.
+- **Dev server zomiera medzi bash volaniami** — bash tool zabíja child procesy; treba reštartovať v každom testovacom volaní.
+- **Fullscreen** — sky map card ref sa nastavuje, ale canvas sa nemusí správne zmeniť veľkosť v fullscreen (treba ResizeObserver).
+- **Print** — otvorí nové okno, ktoré môže byť zablokované popup blockerom.
+- **Shared observations** — base64 enkódovanie môže generovať veľmi dlhé URL pre veľa eventov.
+
+### Priority recommendations for next phase (fáza 12)
+1. **Satelity (ISS)** — TLE dáta z celestrak.org + satellite.js pre real-time pozície.
+2. **Planetárne ephemeris** — reálny výpočet polohy planét (astronomy-engine).
+3. **Notifikácie preletov** — upozornenie keď ISS preletí nad obzorom.
+4. **City search** — vyhľadávanie miest pre polohu (cez geocoding API).
+5. **PWA support** — Service Worker pre offline fungovanie.
+6. **ResizeObserver pre fullscreen** — sky map canvas sa prispôsobí fullscreen veľkosti.
+7. **Zdieľanie skrátené** — použíť URL shortener pre dlhé zdieľané linky.
+8. **Export do PDF** — rozšíriť print o PDF export.
