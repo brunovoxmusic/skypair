@@ -46,9 +46,12 @@ import { SkyMap } from './sky-map'
 import { SkyInfoPanel } from './sky-info-panel'
 import { MeteorShowersPanel } from './meteor-showers-panel'
 import { StarInfoPopup, type StarInfo } from './star-info-popup'
+import { DeepSkyInfoPopup, type DeepSkyInfo } from './deep-sky-info-popup'
+import { SearchPanel, type SearchResult } from './search-panel'
 import { useSkyStore } from '@/lib/sky-store'
 import { formatCode } from '@/lib/sky-utils'
 import { ALL_STARS, localSiderealTime, equatorialToHorizontal } from '@/lib/stars'
+import { MESSIER_CATALOG } from '@/lib/deep-sky'
 
 interface ObservationProps {
   role: 'host' | 'client'
@@ -187,6 +190,7 @@ export function Observation(props: ObservationProps) {
 
   const [locating, setLocating] = useState(false)
   const [selectedStar, setSelectedStar] = useState<StarInfo | null>(null)
+  const [selectedDso, setSelectedDso] = useState<DeepSkyInfo | null>(null)
   const handleLocate = useCallback(() => {
     if (!('geolocation' in navigator)) {
       addChat({ id: 'geo-err-' + Date.now(), text: 'Geolokácia nie je podporovaná v tomto prehliadači.', from: 'system', at: Date.now() })
@@ -297,6 +301,54 @@ export function Observation(props: ObservationProps) {
     })
   }, [])
 
+  // Handle search result click — locate the object and open popup if applicable
+  const handleSearchResult = useCallback((r: SearchResult) => {
+    const lst = localSiderealTime(new Date(), view.lng)
+    const altAz = equatorialToHorizontal(r.ra, r.dec, lst, view.lat)
+    if (altAz.alt > 0) {
+      setView({ az: altAz.az, alt: Math.max(15, altAz.alt) })
+    } else {
+      setView({ az: altAz.az, alt: 10 })
+    }
+    // Open popup for stars and deep-sky
+    if (r.type === 'star') {
+      setSelectedStar({
+        name: r.name,
+        con: r.con || '',
+        ra: r.ra,
+        dec: r.dec,
+        mag: r.mag || 0,
+        altAz,
+      })
+      setSelectedDso(null)
+    } else if (r.type === 'dso') {
+      // Find full DSO info
+      const full = MESSIER_CATALOG.find((d) => d.messierId === r.id)
+      if (full) {
+        setSelectedDso({
+          messierId: full.messierId,
+          name: full.name,
+          nameSk: full.nameSk,
+          type: full.type,
+          ra: full.ra,
+          dec: full.dec,
+          mag: full.mag,
+          altAz,
+          size: full.size,
+          distance: full.distance,
+          constellation: full.constellation,
+          description: full.description,
+          bestSeen: full.bestSeen,
+        })
+        setSelectedStar(null)
+      }
+    } else {
+      // constellation — just locate, no popup
+      setSelectedStar(null)
+      setSelectedDso(null)
+    }
+  }, [view.lng, view.lat, setView])
+
   const pcConnected = pcState === 'connected'
 
   return (
@@ -306,7 +358,22 @@ export function Observation(props: ObservationProps) {
         <Card className="flex-1 min-h-[360px] sm:min-h-[460px] relative overflow-hidden bg-[#02030a] border-emerald-500/20">
           <CardContent className="p-0 h-full absolute inset-0 flex items-center justify-center">
             <div className="w-full h-full max-w-[640px] max-h-[640px] aspect-square mx-auto p-2">
-              <SkyMap onStarClick={(s) => setSelectedStar(s)} />
+              <SkyMap
+                onStarClick={(s) => { setSelectedStar(s); setSelectedDso(null) }}
+                onDeepSkyClick={(d) => {
+                  // Find full DSO info from catalog
+                  const full = MESSIER_CATALOG.find((c) => c.messierId === d.messierId)
+                  setSelectedDso({
+                    ...d,
+                    size: full?.size,
+                    distance: full?.distance,
+                    constellation: full?.constellation,
+                    description: full?.description,
+                    bestSeen: full?.bestSeen,
+                  })
+                  setSelectedStar(null)
+                }}
+              />
             </div>
           </CardContent>
           {/* Star info popup */}
@@ -316,6 +383,12 @@ export function Observation(props: ObservationProps) {
             onLocate={(az, alt) => { setView({ az, alt }); setSelectedStar(null) }}
             bookmarked={selectedStar ? bookmarks.includes(selectedStar.name) : false}
             onToggleBookmark={toggleBookmark}
+          />
+          {/* Deep-sky info popup */}
+          <DeepSkyInfoPopup
+            dso={selectedDso}
+            onClose={() => setSelectedDso(null)}
+            onLocate={(az, alt) => { setView({ az, alt }); setSelectedDso(null) }}
           />
           {/* Top overlay status bar */}
           <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2 z-10 pointer-events-none">
@@ -480,6 +553,9 @@ export function Observation(props: ObservationProps) {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Search panel */}
+            <SearchPanel onResultClick={handleSearchResult} />
+
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <label className="text-sm flex items-center gap-1">

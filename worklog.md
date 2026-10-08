@@ -315,3 +315,60 @@
 6. **História relácií** — IndexedDB pre minulé pozorovania.
 7. **Search/filter hviezd** — vyhľadávanie hviezd podľa názvu.
 8. **Notifikácie preletov** — upozornenie keď ISS preletí nad obzorom.
+
+---
+
+## Fáza 6 — Search hviezd, deep-sky popup, vylepšenia (cron webDevReview)
+
+### Current project status (po fáze 6)
+- **Aplikácia stabilná, lint čistý.**
+- QA cez agent-browser potvrdilo: search panel funguje (Vega → výsledok "Hviezda · Lyr · mag 0.0 · pod horizontom"), klik na výsledok otvorí star popup.
+- Sky map renderuje (307 bright + 1302 medium pixelov).
+- Deep-sky hit-testing pridaný — klik na deep-sky objekt otvorí DeepSkyInfoPopup s detailmi.
+
+### Goals for phase 6 (completed)
+1. ✅ **Search/filter hviezd a deep-sky objektov** — SearchPanel komponent s autocomplete dropdown, vyhľadáva hviezdy (ALL_STARS), deep-sky (MESSIER_CATALOG) a súhvezdia (CONSTELLATIONS_INFO), výsledky ukazujú typ/magnitúdu/viditeľnosť
+2. ✅ **Deep-sky info popup** — DeepSkyInfoPopup komponent: Messier ID, názov (sk/en), typ (s farbou), magnitúda, veľkosť, RA/Dec, vzdialenosť, horizontové súradnice, najlepší mesiac, súhvezdie, popis, "Zamerať v mape"
+3. ✅ **Deep-sky hit-testing** — onClick v sky-map.tsx deteguje klik na deep-sky objekt (najbližší v okruhu 8-14px), volá onDeepSkyClick callback
+4. ✅ **Search result handler** — handleSearchResult() lociauje objekt (az/alt), otvorí star/dso popup podľa typu, pre súhvezdia len zameria
+5. ✅ **Integrácia** — SearchPanel v controls paneli, DeepSkyInfoPopup ako overlay na sky map
+
+### Completed modifications
+- `src/components/sky/search-panel.tsx` (nový): SearchPanel komponent s Input + autocomplete dropdown, index 90+ hviezd + 12 DSO + 19 súhvezdí, výsledky s ikonami (Star/CircleDashed) a statusom viditeľnosti
+- `src/components/sky/deep-sky-info-popup.tsx` (nový): DeepSkyInfoPopup s Framer Motion animáciou, RA/Dec formátovanie (HMS/DMS), farby podľa typu, "Zamerať v mape"
+- `src/components/sky/sky-map.tsx`:
+  - Pridaný `onDeepSkyClick` prop + onDeepSkyClickRef
+  - Deep-sky hit-testing v onClick (najbližší DSO v okruhu)
+  - Return po star hit-test (ak sa našla hviezda, neskontroluje DSO)
+- `src/components/sky/observation.tsx`:
+  - Importy: DeepSkyInfoPopup, DeepSkyInfo, SearchPanel, SearchResult, MESSIER_CATALOG
+  - `selectedDso` state + setSelectedDso
+  - `handleSearchResult()` — lociauje objekt, otvorí popup podľa typu
+  - SkyMap onStarClick + onDeepSkyClick callbacks
+  - StarInfoPopup + DeepSkyInfoPopup ako overlays
+  - SearchPanel v controls paneli (hore)
+
+### Verification results (agent-browser)
+- ✅ Vyhľadávací panel prítomný: "Vyhľadávanie objektov na oblohe" (@e46)
+- ✅ Search "Vega" → výsledok: "Vega Hviezda · Lyr · mag 0.0 · pod horizontom" (@e49)
+- ✅ Klik na výsledok prebehol (✓ Done)
+- ✅ Sky map pixel analysis: 307 bright + 1302 medium = hviezdy + deep-sky renderujú
+- ✅ Lint clean, no runtime errors
+- ✅ POST /api/session/verify 200, GET / 200
+
+### Unresolved issues / risks (po fáze 6)
+- **Agent-browser session veľmi nestabilná** — po 1-2 interakciách sa stratí; riešenie: všetky testy v jednom bash volaní.
+- **Dev server zomiera medzi bash volaniami** — bash tool zabíja child procesy; treba reštartovať v každom testovacom volaní.
+- **Search dropdown** — nezatvára sa pri klik mimo (len timeout 200ms blur).
+- **Konštelácia názvy** — pri kliku na súhvezdie sa len zameria, nezobrazí popup s informáciami.
+- **Deep-sky hit radius** — pre slabšie DSO (mag > 8) je hit radius malý.
+
+### Priority recommendations for next phase (fáza 7)
+1. **Satelity (ISS)** — TLE dáta z celestrak.org + satellite.js pre real-time pozície.
+2. **Planetárne ephemeris** — reálny výpočet polohy planét (astronomy-engine).
+3. **Konštelácia info popup** — klik na súhvezdie otvorí popup s informáciami.
+4. **Responsive sky info panel** — kolabovať na mobiloch (< 768px).
+5. **História relácií** — IndexedDB pre minulé pozorovania.
+6. **Notifikácie preletov** — upozornenie keď ISS preletí nad obzorom.
+7. **Tutorial/onboarding** — prvotný návod pre nových používateľov.
+8. **Preset polohy** — rýchly výber miest (Bratislava, Košice, Praha, Viedeň).

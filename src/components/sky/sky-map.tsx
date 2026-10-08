@@ -20,9 +20,10 @@ import { useSkyStore } from '@/lib/sky-store'
 interface SkyMapProps {
   className?: string
   onStarClick?: (star: { name: string; con: string; ra: number; dec: number; mag: number; altAz: { az: number; alt: number } }) => void
+  onDeepSkyClick?: (dso: { messierId: string; name: string; nameSk: string; type: string; ra: number; dec: number; mag: number; altAz: { az: number; alt: number } }) => void
 }
 
-export function SkyMap({ className, onStarClick }: SkyMapProps) {
+export function SkyMap({ className, onStarClick, onDeepSkyClick }: SkyMapProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
   const view = useSkyStore((s) => s.view)
@@ -44,6 +45,10 @@ export function SkyMap({ className, onStarClick }: SkyMapProps) {
   const onStarClickRef = useRef(onStarClick)
   useEffect(() => {
     onStarClickRef.current = onStarClick
+  })
+  const onDeepSkyClickRef = useRef(onDeepSkyClick)
+  useEffect(() => {
+    onDeepSkyClickRef.current = onDeepSkyClick
   })
 
   // field stars + milky way points generated once (deterministic)
@@ -572,6 +577,39 @@ export function SkyMap({ className, onStarClick }: SkyMapProps) {
         mag: best.star.mag,
         altAz,
       })
+      return
+    }
+
+    // Hit-test deep-sky objects (Messier)
+    if (onDeepSkyClickRef.current) {
+      let bestDso: { dso: typeof MESSIER_CATALOG[number]; dist: number } | null = null
+      for (const dso of MESSIER_CATALOG) {
+        const altAz = equatorialToHorizontal(dso.ra, dso.dec, lst, v.lat)
+        if (altAz.alt < -2) continue
+        const p = projectAltAz(altAz, v.az, radius)
+        const dist = Math.hypot(p.x - cx, p.y - cy)
+        if (dist > radius) continue
+        const screenDist = Math.hypot(p.x - x, p.y - y)
+        const hitRadius = Math.max(8, Math.min(14, (10 - dso.mag) * 1.5) * Math.sqrt(v.zoom))
+        if (screenDist < hitRadius) {
+          if (!bestDso || screenDist < bestDso.dist) {
+            bestDso = { dso, dist: screenDist }
+          }
+        }
+      }
+      if (bestDso) {
+        const altAz = equatorialToHorizontal(bestDso.dso.ra, bestDso.dso.dec, lst, v.lat)
+        onDeepSkyClickRef.current({
+          messierId: bestDso.dso.messierId,
+          name: bestDso.dso.name,
+          nameSk: bestDso.dso.nameSk,
+          type: bestDso.dso.type,
+          ra: bestDso.dso.ra,
+          dec: bestDso.dso.dec,
+          mag: bestDso.dso.mag,
+          altAz,
+        })
+      }
     }
   }
 
