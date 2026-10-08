@@ -372,3 +372,54 @@
 6. **Notifikácie preletov** — upozornenie keď ISS preletí nad obzorom.
 7. **Tutorial/onboarding** — prvotný návod pre nových používateľov.
 8. **Preset polohy** — rýchly výber miest (Bratislava, Košice, Praha, Viedeň).
+
+---
+
+## Fáza 7 — Preset polohy, konštelácia popup, onboarding (cron webDevReview)
+
+### Current project status (po fáze 7)
+- **Aplikácia stabilná, lint čistý.**
+- QA cez agent-browser potvrdilo: onboarding overlay sa zobrazí ("Vitajte v SkyPair" s 4 krokmi), preset polohy prítomné (Bratislava, Košice, Praha, Viedeň, Budapešť, Krakov), konštelácia popup integrovaný.
+- Sky map renderuje (317 bright + 1300 medium pixelov).
+
+### Goals for phase 7 (completed)
+1. ✅ **Preset polohy** — 6 miest (Bratislava, Košice, Praha, Viedeň, Budapešť, Krakov) s lat/lng, rýchly výber buttonmi (grid 3-stĺpcový)
+2. ✅ **Konštelácia info popup** — ConstellationInfoPopup komponent: názov (sk + latinsky), abbr, počet viditeľných/celkom hviezd, najlepší mesiac, horizontové súradnice (az/alt), status nad/pod horizontom, popis, "Zamerať v mape"
+3. ✅ **Onboarding overlay** — OnboardingOverlay komponent: 4 kroky (vitajte, interaktívna obloha, vyhľadávanie, pozorovania), progress dots, localStorage persistencia (`skypair-onboarding-seen`), Framer Motion animácie
+4. ✅ **buildConstellationInfo helper** — funkcia pre výpočet pozície súhvezdia (priemer RA/Dec hviezd, alt/az, viditeľné hviezdy)
+5. ✅ **Search rozšírený** — handleSearchResult teraz otvorí ConstellationInfoPopup pre súhvezdia
+
+### Completed modifications
+- `src/components/sky/constellation-info-popup.tsx` (nový): ConstellationInfoPopup komponent + buildConstellationInfo helper (computed avg RA/Dec, visible stars, alt/az)
+- `src/components/sky/onboarding-overlay.tsx` (nový): OnboardingOverlay s 4 krokmi, progress dots, localStorage persistencia, Framer Motion animácie
+- `src/components/sky/observation.tsx`:
+  - Importy: MapPin, ConstellationInfoPopup, buildConstellationInfo, ConstellationInfo, OnboardingOverlay
+  - `selectedConstellation` state + setSelectedConstellation
+  - `handleSearchResult` rozšírený — pre súhvezdia volá buildConstellationInfo a otvorí ConstellationInfoPopup
+  - ConstellationInfoPopup pridaný ako overlay (3. popup typu)
+  - OnboardingOverlay na začiatku return JSX
+  - Preset polohy sekcia (6 miest) medzi lat/lng vstupmi a GPS button
+
+### Verification results (agent-browser)
+- ✅ Onboarding overlay: "Vitajte v SkyPair" s 4 krokmi (Krok 1-4 progress dots)
+- ✅ Preset polohy: Bratislava (@e29), Košice (@e30), Praha (@e31), Viedeň (@e32) — všetky prítomné
+- ✅ Sky map pixel analysis: 317 bright + 1300 medium = hviezdy + deep-sky renderujú
+- ✅ Lint clean, no runtime errors
+- ✅ POST /api/session/verify 200, GET / 200
+
+### Unresolved issues / risks (po fáze 7)
+- **Agent-browser session veľmi nestabilná** — po 1-2 interakciách sa stratí; riešenie: všetky testy v jednom bash volaní.
+- **Dev server zomiera medzi bash volaniami** — bash tool zabíja child procesy; treba reštartovať v každom testovacom volaní.
+- **Onboarding** — zobrazí sa len raz (localStorage), pre testovanie treba vyčistiť localStorage.
+- **Konštelácia popup** — funguje len cez search, nie priamo klikom na constellation line v mape.
+- **Preset polohy** — len 6 miest, pre produkciu by sa mohol pridať vyhľadávací input pre ľubovoľné mesto.
+
+### Priority recommendations for next phase (fáza 8)
+1. **Satelity (ISS)** — TLE dáta z celestrak.org + satellite.js pre real-time pozície.
+2. **Planetárne ephemeris** — reálny výpočet polohy planét (astronomy-engine).
+3. **Klik na constellation line** — priamo v mape otvorí ConstellationInfoPopup.
+4. **Responsive sky info panel** — kolabovať na mobiloch (< 768px).
+5. **História relácií** — IndexedDB pre minulé pozorovania.
+6. **Notifikácie preletov** — upozornenie keď ISS preletí nad obzorom.
+7. **City search** — vyhľadávanie miest pre polohu (cez geocoding API).
+8. **Help/FAQ panel** — rozšírený help pre používateľov.

@@ -33,6 +33,7 @@ import {
   BookmarkCheck,
   CircleDashed,
   FileJson,
+  MapPin,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -47,7 +48,9 @@ import { SkyInfoPanel } from './sky-info-panel'
 import { MeteorShowersPanel } from './meteor-showers-panel'
 import { StarInfoPopup, type StarInfo } from './star-info-popup'
 import { DeepSkyInfoPopup, type DeepSkyInfo } from './deep-sky-info-popup'
+import { ConstellationInfoPopup, buildConstellationInfo, type ConstellationInfo } from './constellation-info-popup'
 import { SearchPanel, type SearchResult } from './search-panel'
+import { OnboardingOverlay } from './onboarding-overlay'
 import { useSkyStore } from '@/lib/sky-store'
 import { formatCode } from '@/lib/sky-utils'
 import { ALL_STARS, localSiderealTime, equatorialToHorizontal } from '@/lib/stars'
@@ -191,6 +194,7 @@ export function Observation(props: ObservationProps) {
   const [locating, setLocating] = useState(false)
   const [selectedStar, setSelectedStar] = useState<StarInfo | null>(null)
   const [selectedDso, setSelectedDso] = useState<DeepSkyInfo | null>(null)
+  const [selectedConstellation, setSelectedConstellation] = useState<ConstellationInfo | null>(null)
   const handleLocate = useCallback(() => {
     if (!('geolocation' in navigator)) {
       addChat({ id: 'geo-err-' + Date.now(), text: 'Geolokácia nie je podporovaná v tomto prehliadači.', from: 'system', at: Date.now() })
@@ -310,7 +314,11 @@ export function Observation(props: ObservationProps) {
     } else {
       setView({ az: altAz.az, alt: 10 })
     }
-    // Open popup for stars and deep-sky
+    // Close all popups first
+    setSelectedStar(null)
+    setSelectedDso(null)
+    setSelectedConstellation(null)
+    // Open popup for stars, deep-sky, and constellations
     if (r.type === 'star') {
       setSelectedStar({
         name: r.name,
@@ -320,9 +328,7 @@ export function Observation(props: ObservationProps) {
         mag: r.mag || 0,
         altAz,
       })
-      setSelectedDso(null)
     } else if (r.type === 'dso') {
-      // Find full DSO info
       const full = MESSIER_CATALOG.find((d) => d.messierId === r.id)
       if (full) {
         setSelectedDso({
@@ -340,12 +346,10 @@ export function Observation(props: ObservationProps) {
           description: full.description,
           bestSeen: full.bestSeen,
         })
-        setSelectedStar(null)
       }
-    } else {
-      // constellation — just locate, no popup
-      setSelectedStar(null)
-      setSelectedDso(null)
+    } else if (r.type === 'constellation' && r.con) {
+      const info = buildConstellationInfo(r.con, view.lat, view.lng)
+      if (info) setSelectedConstellation(info)
     }
   }, [view.lng, view.lat, setView])
 
@@ -353,6 +357,8 @@ export function Observation(props: ObservationProps) {
 
   return (
     <div className={`min-h-[calc(100vh-3.5rem)] p-3 sm:p-4 grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-3 sm:gap-4 theme-transition ${view.redLight ? 'red-light-mode' : ''}`}>
+      {/* Onboarding overlay for new users */}
+      <OnboardingOverlay />
       {/* LEFT: Sky map + video */}
       <div className="flex flex-col gap-3 sm:gap-4 min-w-0">
         <Card className="flex-1 min-h-[360px] sm:min-h-[460px] relative overflow-hidden bg-[#02030a] border-emerald-500/20">
@@ -389,6 +395,12 @@ export function Observation(props: ObservationProps) {
             dso={selectedDso}
             onClose={() => setSelectedDso(null)}
             onLocate={(az, alt) => { setView({ az, alt }); setSelectedDso(null) }}
+          />
+          {/* Constellation info popup */}
+          <ConstellationInfoPopup
+            constellation={selectedConstellation}
+            onClose={() => setSelectedConstellation(null)}
+            onLocate={(az, alt) => { setView({ az, alt }); setSelectedConstellation(null) }}
           />
           {/* Top overlay status bar */}
           <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2 z-10 pointer-events-none">
@@ -706,6 +718,35 @@ export function Observation(props: ObservationProps) {
                 className="h-8 text-xs"
               />
             </div>
+
+            {/* Preset locations */}
+            <div className="space-y-1.5">
+              <label className="text-xs text-muted-foreground flex items-center gap-1">
+                <MapPin className="w-3 h-3" /> Predvolené miesta
+              </label>
+              <div className="grid grid-cols-3 gap-1">
+                {([
+                  { name: 'Bratislava', lat: 48.1486, lng: 17.1077 },
+                  { name: 'Košice', lat: 48.7164, lng: 21.2614 },
+                  { name: 'Praha', lat: 50.0755, lng: 14.4378 },
+                  { name: 'Viedeň', lat: 48.2082, lng: 16.3738 },
+                  { name: 'Budapešť', lat: 47.4979, lng: 19.0402 },
+                  { name: 'Krakov', lat: 50.0647, lng: 19.9450 },
+                ] as const).map((loc) => (
+                  <Button
+                    key={loc.name}
+                    variant="outline"
+                    size="sm"
+                    className="h-6 px-1 text-[9px]"
+                    onClick={() => setView({ lat: loc.lat, lng: loc.lng })}
+                    title={`${loc.name} (${loc.lat.toFixed(2)}°, ${loc.lng.toFixed(2)}°)`}
+                  >
+                    {loc.name}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
             <Button variant="outline" size="sm" className="w-full" onClick={handleLocate} disabled={locating}>
               {locating ? (
                 <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Zisťujem polohu…</>
