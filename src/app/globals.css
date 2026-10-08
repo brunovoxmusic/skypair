@@ -191,3 +191,32 @@
   background-repeat: repeat;
   background-size: 400px 400px;
 }
+
+/* ============================================================
+   Red light night mode — preserves dark adaptation for astronomy
+   Applies a red overlay filter to the entire app
+   ============================================================ */
+.red-light-mode {
+  filter: sepia(1) saturate(4) hue-rotate(300deg) brightness(0.85) !important;
+}
+.red-light-mode * {
+  scrollbar-color: rgba(220, 80, 80, 0.4) transparent !important;
+}
+.red-light-mode::-webkit-scrollbar-thumb {
+  background-color: rgba(220, 80, 80, 0.4) !important;
+}
+
+/* Smooth transitions for theme changes */
+.theme-transition,
+.theme-transition * {
+  transition: filter 0.4s ease, background-color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Pulse animation for active radiant button */
+@keyframes radiant-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.4); }
+  50% { box-shadow: 0 0 0 6px rgba(244, 63, 94, 0); }
+}
+.animate-radiant-pulse {
+  animation: radiant-pulse 2s ease-in-out infinite;
+}

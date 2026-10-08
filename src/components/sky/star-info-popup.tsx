@@ -1,7 +1,7 @@
 'use client'
 
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Star, MapPin, Clock, Navigation } from 'lucide-react'
+import { X, Star, MapPin, Clock, Navigation, Bookmark, BookmarkCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { CONSTELLATIONS_INFO } from '@/lib/stars'
@@ -19,6 +19,8 @@ interface StarInfoPopupProps {
   star: StarInfo | null
   onClose: () => void
   onLocate?: (az: number, alt: number) => void
+  bookmarked?: boolean
+  onToggleBookmark?: (starName: string) => void
 }
 
 // Magnitude to description
@@ -49,7 +51,7 @@ function decToDMS(dec: number): string {
   return `${sign}${d}° ${m.toString().padStart(2, '0')}′ ${s.toString().padStart(2, '0')}″`
 }
 
-export function StarInfoPopup({ star, onClose, onLocate }: StarInfoPopupProps) {
+export function StarInfoPopup({ star, onClose, onLocate, bookmarked, onToggleBookmark }: StarInfoPopupProps) {
   const constellation = star ? CONSTELLATIONS_INFO.find((c) => c.abbr === star.con) : null
 
   return (
@@ -69,9 +71,23 @@ export function StarInfoPopup({ star, onClose, onLocate }: StarInfoPopupProps) {
                 <Star className="w-4 h-4 text-emerald-400 shrink-0" />
                 <h3 className="font-semibold text-sm truncate">{star.name}</h3>
               </div>
-              <Button size="icon" variant="ghost" className="h-6 w-6 shrink-0" onClick={onClose}>
-                <X className="w-3.5 h-3.5" />
-              </Button>
+              <div className="flex items-center gap-1 shrink-0">
+                {onToggleBookmark && (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className={`h-6 w-6 ${bookmarked ? 'text-amber-400 hover:bg-amber-500/10' : 'text-muted-foreground hover:bg-muted'}`}
+                    onClick={() => onToggleBookmark(star.name)}
+                    title={bookmarked ? 'Odstrániť zo záložiek' : 'Pridať do záložiek'}
+                    aria-label="Prepnúť záložku hviezdy"
+                  >
+                    {bookmarked ? <BookmarkCheck className="w-3.5 h-3.5" /> : <Bookmark className="w-3.5 h-3.5" />}
+                  </Button>
+                )}
+                <Button size="icon" variant="ghost" className="h-6 w-6" onClick={onClose}>
+                  <X className="w-3.5 h-3.5" />
+                </Button>
+              </div>
             </div>
 
             {/* Body */}

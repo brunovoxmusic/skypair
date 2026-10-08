@@ -198,3 +198,67 @@
 6. **Zvukové upozornenia** — audio alert pri detekcii meteoru alebo ISS preletu.
 7. **Nočný režim červeného svetla** — pre zachovanie nočného videnia (astronomický režim).
 8. **História relácií** — uložiť minulé pozorovania do IndexedDB pre neskoršie nahliadnutie.
+
+---
+
+## Fáza 4 — Červený nočný režim, záložky hviezd, zvukové upozornenia (cron webDevReview)
+
+### Current project status (po fáze 4)
+- **Aplikácia stabilná, lint čistý, servery bežia.**
+- QA cez agent-browser potvrdilo všetky nové funkcie: červený nočný režim (ACTIVE/OFF), zvukové upozornenia, záložky hviezd, Meteor event pridá a aktivuje export.
+- Red light mode filter funguje (CSS `.red-light-mode` class s `filter: sepia(1) saturate(4) hue-rotate(300deg)`).
+
+### Goals for phase 4 (completed)
+1. ✅ **Červený nočný režim (red light mode)** — `redLight` flag v SkyState store, CSS filter `.red-light-mode` (sepia + saturate + hue-rotate pre červený nádech), Flame ikona v top bare, smooth transition (0.4s)
+2. ✅ **Zvukové upozornenia** — Web Audio API (OscillatorNode + GainNode), 3 rôzne tóny (meteor: klesajúci 880→440Hz, satelit: stúpajúci 660→990Hz, iné: 523Hz), Volume2/VolumeX toggle v top bare, lazy AudioContext inicializácia
+3. ✅ **Záložky hviezd (star bookmarking)** — localStorage persistencia (`skypair-bookmarks`), BookmarkCheck/Bookmark ikona v StarInfoPopup headeri, záložky zoznam v controls paneli (klik = zamerať hviezdu + otvoriť popup)
+4. ✅ **markEvent s audio** — playAlert(type) volaná pri každom evente (ak je audio zapnuté)
+5. ✅ **Vylepšené styling** — theme-transition class (0.4s filter transition), radiant-pulse animácia pre aktívne meteorické roje
+
+### Completed modifications
+- `src/lib/sky-store.ts`: pridaný `redLight: boolean` do SkyState (default: false)
+- `src/app/globals.css`:
+  - `.red-light-mode` filter (sepia/saturate/hue-rotate/brightness)
+  - `.red-light-mode *` scrollbar farby zmenené na červené
+  - `.theme-transition` smooth transition pre filter/bg/border
+  - `@keyframes radiant-pulse` + `.animate-radiant-pulse` pre aktívne radiant buttony
+- `src/components/sky/star-info-popup.tsx`:
+  - Pridané `bookmarked` a `onToggleBookmark` props
+  - Bookmark/BookmarkCheck tlačidlo v headeri (amber farba keď bookmarovaný)
+  - Import Bookmark, BookmarkCheck z lucide-react
+- `src/components/sky/observation.tsx`:
+  - Importy: Flame, Volume2, VolumeX, Bookmark, BookmarkCheck + ALL_STARS, localSiderealTime, equatorialToHorizontal
+  - `redLight` toggle button v top bare (Flame ikona, red highlight keď aktívny)
+  - `audioEnabled` state + audio toggle button (Volume2/VolumeX)
+  - `playAlert()` — Web Audio API s 3 tónmi podľa typu eventu
+  - `markEvent` rozšírený o `playAlert(type)`
+  - `bookmarks` state + localStorage persistencia
+  - `toggleBookmark()` — pridá/odstráni hviezdu zo záložiek
+  - StarInfoPopup prepojený s bookmarks + toggleBookmark
+  - Záložky zoznam v controls paneli (klik = zamerať hviezdu + otvoriť popup)
+  - Root div s `theme-transition ${view.redLight ? 'red-light-mode' : ''}` class
+
+### Verification results (agent-browser)
+- ✅ "Prepnúť červený nočný režim" button (@e41) — klik → red-light-mode ACTIVE (CSS filter aplikovaný)
+- ✅ "Prepnúť zvukové upozornenia" button (@e42) — toggle funguje
+- ✅ Red light toggle: ON → "ACTIVE", OFF → "OFF" (overené cez eval)
+- ✅ Meteor event pridaný → Export button sa zmenil z disabled na enabled
+- ✅ Screenshot s red light: 109KB (plná stránka s filterom)
+- ✅ Lint clean, no runtime errors
+- ✅ POST /api/session/verify 200, GET / 200
+
+### Unresolved issues / risks (po fáze 4)
+- **Agent-browser session sa stráca** po ~5-6 volaniach — riešenie: všetky interakcie v jednom bash volaní.
+- **Audio Context** vyžaduje user gesture pred prehrávaním (browser policy) — toggle sa musí kliknúť aspoň raz.
+- **Bookmarks perzistencia** — ak používateľ vymaže localStorage, záložky sa stratia (žiadny sync).
+- **Red light filter** ovplyvňuje celú appku vrátane canvasu — pre presné farby by sa mohol aplikovať len na UI elements.
+
+### Priority recommendations for next phase (fáza 5)
+1. **Satelity (ISS)** — TLE dáta z celestrak.org + satellite.js pre real-time pozície na oblohe.
+2. **Planetárne ephemeris** — reálny výpočet polohy planét podľa dátumu (astronomy-engine knižnica).
+3. **Konštelácie názvy** — label pri hover/kliku na constellation line.
+4. **Responsive sky info panel** — kolabovať na mobiloch (< 768px).
+5. **História relácií** — uložiť minulé pozorovania do IndexedDB pre neskoršie nahliadnutie.
+6. **Deep sky objekty** — Messier katalóg (M31, M42, M45...) s pozíciami a popismi.
+7. **Notifikácie preletov** — upozornenie keď ISS preletí nad obzorom.
+8. **Export do JSON** — rozšíriť export o JSON formát pre integráciu s inými nástrojmi.

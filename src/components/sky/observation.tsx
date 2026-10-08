@@ -26,6 +26,11 @@ import {
   Compass,
   Info,
   Download,
+  Flame,
+  Volume2,
+  VolumeX,
+  Bookmark,
+  BookmarkCheck,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -41,6 +46,7 @@ import { MeteorShowersPanel } from './meteor-showers-panel'
 import { StarInfoPopup, type StarInfo } from './star-info-popup'
 import { useSkyStore } from '@/lib/sky-store'
 import { formatCode } from '@/lib/sky-utils'
+import { ALL_STARS, localSiderealTime, equatorialToHorizontal } from '@/lib/stars'
 
 interface ObservationProps {
   role: 'host' | 'client'
@@ -125,6 +131,40 @@ export function Observation(props: ObservationProps) {
     setChatInput('')
   }, [chatInput, addChat, onChat])
 
+  // Audio alerts state (declared before markEvent which uses it)
+  const [audioEnabled, setAudioEnabled] = useState(false)
+  const audioCtxRef = useRef<AudioContext | null>(null)
+  const playAlert = useCallback((type: string) => {
+    if (!audioEnabled) return
+    try {
+      if (!audioCtxRef.current) {
+        const Ctx = window.AudioContext || (window as any).webkitAudioContext
+        if (Ctx) audioCtxRef.current = new Ctx()
+      }
+      const ctx = audioCtxRef.current
+      if (!ctx) return
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      if (type === 'meteor') {
+        osc.frequency.setValueAtTime(880, ctx.currentTime)
+        osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.3)
+      } else if (type === 'satellite') {
+        osc.frequency.setValueAtTime(660, ctx.currentTime)
+        osc.frequency.exponentialRampToValueAtTime(990, ctx.currentTime + 0.2)
+      } else {
+        osc.frequency.setValueAtTime(523, ctx.currentTime)
+      }
+      gain.gain.setValueAtTime(0.15, ctx.currentTime)
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4)
+      osc.start()
+      osc.stop(ctx.currentTime + 0.4)
+    } catch (e) {
+      // ignore audio errors
+    }
+  }, [audioEnabled])
+
   const markEvent = useCallback(
     (type: 'meteor' | 'satellite' | 'planet' | 'note') => {
       const e = {
@@ -138,8 +178,9 @@ export function Observation(props: ObservationProps) {
       addEvent(e)
       onSkyEvent({ type, payload: { x: e.x, y: e.y, label: e.label, at: e.at } })
       if (type === 'meteor') incMeteor()
+      playAlert(type)
     },
-    [addEvent, onSkyEvent, incMeteor],
+    [addEvent, onSkyEvent, incMeteor, playAlert],
   )
 
   const [locating, setLocating] = useState(false)
@@ -203,10 +244,31 @@ export function Observation(props: ObservationProps) {
     addChat({ id: 'exp-ok-' + Date.now(), text: `Exportovaných ${events.length} pozorovaní do CSV.`, from: 'system', at: Date.now() })
   }, [events, addChat])
 
+  // Star bookmarks (localStorage)
+  const [bookmarks, setBookmarks] = useState<string[]>([])
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('skypair-bookmarks')
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (stored) setBookmarks(JSON.parse(stored))
+    } catch {}
+  }, [])
+  const toggleBookmark = useCallback((starName: string) => {
+    setBookmarks((prev) => {
+      const next = prev.includes(starName)
+        ? prev.filter((n) => n !== starName)
+        : [...prev, starName]
+      try {
+        localStorage.setItem('skypair-bookmarks', JSON.stringify(next))
+      } catch {}
+      return next
+    })
+  }, [])
+
   const pcConnected = pcState === 'connected'
 
   return (
-    <div className="min-h-[calc(100vh-3.5rem)] p-3 sm:p-4 grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-3 sm:gap-4">
+    <div className={`min-h-[calc(100vh-3.5rem)] p-3 sm:p-4 grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-3 sm:gap-4 theme-transition ${view.redLight ? 'red-light-mode' : ''}`}>
       {/* LEFT: Sky map + video */}
       <div className="flex flex-col gap-3 sm:gap-4 min-w-0">
         <Card className="flex-1 min-h-[360px] sm:min-h-[460px] relative overflow-hidden bg-[#02030a] border-emerald-500/20">
@@ -220,6 +282,8 @@ export function Observation(props: ObservationProps) {
             star={selectedStar}
             onClose={() => setSelectedStar(null)}
             onLocate={(az, alt) => { setView({ az, alt }); setSelectedStar(null) }}
+            bookmarked={selectedStar ? bookmarks.includes(selectedStar.name) : false}
+            onToggleBookmark={toggleBookmark}
           />
           {/* Top overlay status bar */}
           <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2 z-10 pointer-events-none">
@@ -240,6 +304,26 @@ export function Observation(props: ObservationProps) {
               </Badge>
             </div>
             <div className="flex items-center gap-1.5 pointer-events-auto">
+              <Button
+                size="icon"
+                variant="ghost"
+                className={`h-8 w-8 ${view.redLight ? 'bg-red-500/30 text-red-300 hover:bg-red-500/40' : 'text-white/80 hover:text-white hover:bg-white/10'}`}
+                onClick={() => setView({ redLight: !view.redLight })}
+                title="Červený nočný režim (pre zachovanie nočného videnia)"
+                aria-label="Prepnúť červený nočný režim"
+              >
+                <Flame className="w-4 h-4" />
+              </Button>
+              <Button
+                size="icon"
+                variant="ghost"
+                className={`h-8 w-8 ${audioEnabled ? 'bg-emerald-500/30 text-emerald-300 hover:bg-emerald-500/40' : 'text-white/80 hover:text-white hover:bg-white/10'}`}
+                onClick={() => setAudioEnabled((a) => !a)}
+                title="Zvukové upozornenia"
+                aria-label="Prepnúť zvukové upozornenia"
+              >
+                {audioEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+              </Button>
               <Button size="sm" variant="ghost" onClick={onLeave} className="text-white/80 hover:text-white hover:bg-white/10">
                 <LogOut className="w-4 h-4 mr-1" />
                 Odísť
@@ -517,6 +601,45 @@ export function Observation(props: ObservationProps) {
             <p className="text-[10px] text-muted-foreground">
               Predvolené: Bratislava (48.15°N, 17.11°E). Zmeňte pre svoju polohu.
             </p>
+
+            {/* Bookmarked stars */}
+            {bookmarks.length > 0 && (
+              <div className="space-y-1.5">
+                <label className="text-xs text-muted-foreground flex items-center gap-1">
+                  <BookmarkCheck className="w-3 h-3 text-amber-400" />
+                  Obľúbené hviezdy ({bookmarks.length})
+                </label>
+                <div className="flex flex-wrap gap-1 max-h-20 overflow-y-auto sky-scroll">
+                  {bookmarks.map((name) => {
+                    const star = ALL_STARS.find((s) => s.name === name)
+                    if (!star) return null
+                    return (
+                      <button
+                        key={name}
+                        onClick={() => {
+                          const lst = localSiderealTime(new Date(), view.lng)
+                          const altAz = equatorialToHorizontal(star.ra, star.dec, lst, view.lat)
+                          if (altAz.alt > 0) setView({ az: altAz.az, alt: Math.max(15, altAz.alt) })
+                          else setView({ az: altAz.az, alt: 10 })
+                          setSelectedStar({
+                            name: star.name,
+                            con: star.con,
+                            ra: star.ra,
+                            dec: star.dec,
+                            mag: star.mag,
+                            altAz,
+                          })
+                        }}
+                        className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-400/30 hover:bg-amber-500/25 transition-colors"
+                        title={`${name} — ${star.con}`}
+                      >
+                        {name}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 

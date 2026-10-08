@@ -9,6 +9,7 @@ export interface SkyState {
   lat: number
   lng: number
   mode: 'day' | 'night'
+  redLight: boolean
   showGrid: boolean
   showLabels: boolean
   showConstellations: boolean
@@ -72,6 +73,7 @@ const DEFAULT_VIEW: SkyState = {
   lat: 48.1486,
   lng: 17.1077,
   mode: 'night',
+  redLight: false,
   showGrid: true,
   showLabels: true,
   showConstellations: true,
