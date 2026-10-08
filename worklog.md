@@ -631,3 +631,53 @@
 6. **ResizeObserver pre fullscreen** — sky map canvas sa prispôsobí fullscreen veľkosti.
 7. **Zdieľanie skrátené** — použíť URL shortener pre dlhé zdieľané linky.
 8. **Export do PDF** — rozšíriť print o PDF export.
+
+---
+
+## Fáza 12 — ResizeObserver, city search, PWA support (cron webDevReview)
+
+### Current project status (po fáze 12)
+- **Aplikácia stabilná, lint čistý.**
+- QA cez agent-browser potvrdilo: city search funguje (zadané "Koš" → výsledok "Košice Slovensko · 48.72°, 21.26°"), PWA manifest prístupný na /manifest.json, fullscreen/print/share tlačidlá prítomné.
+- Sky map renderuje (294 bright + 1309 medium pixelov).
+
+### Goals for phase 12 (completed)
+1. ✅ **ResizeObserver pre fullscreen** — sky map canvas sa teraz správne zmení veľkosť pri prechode do/zo fullscreen; ResizeObserver sleduje container zmeny
+2. ✅ **City search** — CITIES databáza (30+ európskych miest), CitySearchPanel komponent s autocomplete dropdown, nahradené preset tlačidlá
+3. ✅ **PWA support** — manifest.json (name, short_name, description, start_url, standalone display, theme_color, icons), appleWebApp meta v layout.tsx
+
+### Completed modifications
+- `src/lib/cities.ts` (nový): City interface, CITIES databáza (33 miest: Slovensko, Česko, Rakúsko, Maďarsko, Poľsko, Nemecko, Francúzsko, UK, Taliansko, Španielsko, Holandsko, Švajčiarsko), searchCities() funkcia
+- `src/components/sky/city-search-panel.tsx` (nový): CitySearchPanel s autocomplete dropdown, MapPin ikony, krajina + súradnice
+- `public/manifest.json` (nový): PWA manifest pre inštaláciu ako app
+- `src/app/layout.tsx`: pridané manifest, appleWebApp meta, apple icon
+- `src/components/sky/sky-map.tsx`: pridaný ResizeObserver useEffect — redraw pri zmene veľkosti kontajnera
+- `src/components/sky/observation.tsx`:
+  - Import CitySearchPanel
+  - Nahradené preset tlačidlá za CitySearchPanel s onSelect callback (nastaví lat/lng + toast)
+  - Toast notifikácia pri výbere mesta
+
+### Verification results (agent-browser)
+- ✅ City search: zadané "Koš" → výsledok "Košice Slovensko · 48.72°, 21.26°" (@e67)
+- ✅ PWA manifest: /manifest.json vracia JSON s "name": "SkyPair — Pozorovanie oblohy"
+- ✅ Fullscreen button (@e54), Zdieľať ako link (@e34), Vytlačiť pozorovania (@e35) prítomné
+- ✅ Sky map pixel analysis: 294 bright + 1309 medium = hviezdy + deep-sky renderujú
+- ✅ Lint clean, no runtime errors
+- ✅ POST /api/session/verify 200, GET / 200
+
+### Unresolved issues / risks (po fáze 12)
+- **Agent-browser session veľmi nestabilná** — po 1-2 interakciách sa stratí.
+- **Dev server zomiera medzi bash volaniami** — bash tool zabíja child procesy.
+- **PWA** — manifest bez Service Worker (offline nefunguje), len inštalácia ako app.
+- **City search** — len offline zoznam, pre iné mestá treba geocoding API.
+- **ResizeObserver** — funguje pre kontajner, ale canvas sa môže mierne oneskoriť pri rýchlom fullscreen prepnutí.
+
+### Priority recommendations for next phase (fáza 13)
+1. **Satelity (ISS)** — TLE dáta z celestrak.org + satellite.js pre real-time pozície.
+2. **Planetárne ephemeris** — reálny výpočet polohy planét (astronomy-engine).
+3. **Notifikácie preletov** — upozornenie keď ISS preletí nad obzorom.
+4. **Service Worker** — pre skutočné offline PWA fungovanie.
+5. **Export do PDF** — rozšíriť print o PDF export cez knižnicu.
+6. **Zdieľanie skrátené** — použíť URL shortener pre dlhé zdieľané linky.
+7. **Online geocoding** — pre mestá mimo offline zoznamu.
+8. **Galaxy/cluster rendering** — vylepšená vizualizácia pre deep-sky objekty.

@@ -61,6 +61,7 @@ import { OnboardingOverlay } from './onboarding-overlay'
 import { HelpPanel } from './help-panel'
 import { ShortcutsOverlay } from './shortcuts-overlay'
 import { SharedObservationsModal } from './shared-observations-modal'
+import { CitySearchPanel } from './city-search-panel'
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts'
 import { useObservationHistory } from '@/hooks/use-observation-history'
 import { useFullscreen } from '@/hooks/use-fullscreen'
@@ -901,32 +902,15 @@ export function Observation(props: ObservationProps) {
               />
             </div>
 
-            {/* Preset locations */}
+            {/* City search for location */}
             <div className="space-y-1.5">
               <label className="text-xs text-muted-foreground flex items-center gap-1">
-                <MapPin className="w-3 h-3" /> Predvolené miesta
+                <MapPin className="w-3 h-3" /> Hľadať mesto
               </label>
-              <div className="grid grid-cols-3 gap-1">
-                {([
-                  { name: 'Bratislava', lat: 48.1486, lng: 17.1077 },
-                  { name: 'Košice', lat: 48.7164, lng: 21.2614 },
-                  { name: 'Praha', lat: 50.0755, lng: 14.4378 },
-                  { name: 'Viedeň', lat: 48.2082, lng: 16.3738 },
-                  { name: 'Budapešť', lat: 47.4979, lng: 19.0402 },
-                  { name: 'Krakov', lat: 50.0647, lng: 19.9450 },
-                ] as const).map((loc) => (
-                  <Button
-                    key={loc.name}
-                    variant="outline"
-                    size="sm"
-                    className="h-6 px-1 text-[9px]"
-                    onClick={() => setView({ lat: loc.lat, lng: loc.lng })}
-                    title={`${loc.name} (${loc.lat.toFixed(2)}°, ${loc.lng.toFixed(2)}°)`}
-                  >
-                    {loc.name}
-                  </Button>
-                ))}
-              </div>
+              <CitySearchPanel onSelect={(city) => {
+                setView({ lat: city.lat, lng: city.lng })
+                addChat({ id: 'city-' + Date.now(), text: `Poloha nastavená: ${city.nameSk}, ${city.countrySk}`, from: 'system', at: Date.now() })
+              }} />
             </div>
 
             <Button variant="outline" size="sm" className="w-full" onClick={handleLocate} disabled={locating}>

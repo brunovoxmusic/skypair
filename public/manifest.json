@@ -1,0 +1,20 @@
+{
+  "name": "SkyPair — Pozorovanie oblohy",
+  "short_name": "SkyPair",
+  "description": "Webová aplikácia na pozorovanie nočnej a dennej oblohy s párovaním zariadení cez QR kód.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#02030a",
+  "theme_color": "#02030a",
+  "orientation": "any",
+  "categories": ["education", "astronomy", "utilities"],
+  "lang": "sk",
+  "icons": [
+    {
+      "src": "/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

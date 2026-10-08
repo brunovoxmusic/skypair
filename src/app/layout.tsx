@@ -18,8 +18,15 @@ export const metadata: Metadata = {
   description: "Webová aplikácia na pozorovanie nočnej a dennej oblohy. Spárujte dve zariadenia cez 6‑miestny kód alebo QR kód a zdieľajte obraz kamery so synchronizovanou hviezdou mapou.",
   keywords: ["astronomy", "sky", "WebRTC", "QR", "P2P", "hviezdy", "obloha"],
   authors: [{ name: "SkyPair" }],
+  manifest: "/manifest.json",
   icons: {
     icon: "/logo.svg",
+    apple: "/logo.svg",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "SkyPair",
   },
   openGraph: {
     title: "SkyPair — Pozorovanie oblohy",

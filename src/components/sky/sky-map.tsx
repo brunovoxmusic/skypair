@@ -500,6 +500,17 @@ export function SkyMap({ className, onStarClick, onDeepSkyClick, onConstellation
     draw()
   }, [view, events, draw])
 
+  // ResizeObserver — redraw when container size changes (e.g. fullscreen)
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+    const ro = new ResizeObserver(() => {
+      draw()
+    })
+    ro.observe(container)
+    return () => ro.disconnect()
+  }, [draw])
+
   // pointer interaction
   const draggingRef = useRef(false)
   const lastPosRef = useRef({ x: 0, y: 0 })
