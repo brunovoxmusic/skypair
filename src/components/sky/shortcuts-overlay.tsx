@@ -56,6 +56,19 @@ export function ShortcutsOverlay() {
     return () => window.removeEventListener('keydown', handler)
   }, [])
 
+  // Close on Escape
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        setOpen(false)
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [open])
+
   return (
     <>
       <Button

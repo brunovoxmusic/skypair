@@ -528,3 +528,51 @@
 6. **Escape zatváranie modálov** — pridať Escape handler pre všetky modály.
 7. **Responsive ďalšie** — kolabovať aj controls panel na mobiloch.
 8. **Zdieľanie pozorovaní** — exportovať históriu ako zdieľateľný link.
+
+---
+
+## Fáza 10 — Escape modálov, zdieľanie linku, responsive vylepšenia (cron webDevReview)
+
+### Current project status (po fáze 10)
+- **Aplikácia stabilná, lint čistý.**
+- QA cez agent-browser potvrdilo: "Zdieľať ako link" button (@e40), Help modal otvorí sa a po `press Escape` sa zatvorí, responsive padding zmenšený.
+- Sky map renderuje (306 bright + 1301 medium pixelov).
+
+### Goals for phase 10 (completed)
+1. ✅ **Escape zatváranie modálov** — pridaný Escape handler do HelpPanel, ShortcutsOverlay, History modal (v observation.tsx); pri stlačení Escape sa modal zatvorí
+2. ✅ **Zdieľanie pozorovaní ako zdieľateľný link** — handleShareLink funkcia: generuje base64-encoded URL s pozorovaniami (`?obs=` parameter), kopíruje do schránky cez navigator.clipboard, Share2 ikona button v Events karte
+3. ✅ **Responsive vylepšenia** — main grid padding zmenšený (p-2 sm:p-3 md:p-4), gap zmenšený (gap-2 sm:gap-3 md:gap-4) pre lepšie využitie priestoru na mobiloch
+
+### Completed modifications
+- `src/components/sky/help-panel.tsx`: pridaný useEffect s Escape handlerom (zatvorí modal pri Escape)
+- `src/components/sky/shortcuts-overlay.tsx`: pridaný useEffect s Escape handlerom
+- `src/components/sky/observation.tsx`:
+  - Pridaný useEffect s Escape handlerom pre History modal
+  - `handleShareLink` funkcia — generuje base64 URL s pozorovaniami, kopíruje do schránky
+  - Share2 ikona import, "Zdieľať ako link" button v Events karte (disabled keď žiadne events)
+  - Responsive padding/gap zmenšené pre lepší mobile zážitok
+
+### Verification results (agent-browser)
+- ✅ "Zdieľať ako link" button (@e40, disabled keď žiadne events) prítomný
+- ✅ Help modal sa otvorí ("Pomocník & FAQ")
+- ✅ `press Escape` zatvorí Help modal (modal zmizol zo snapshotu)
+- ✅ Sky map pixel analysis: 306 bright + 1301 medium = hviezdy + deep-sky renderujú
+- ✅ Lint clean, no runtime errors
+- ✅ POST /api/session/verify 200, GET / 200
+
+### Unresolved issues / risks (po fáze 10)
+- **Agent-browser session veľmi nestabilná** — po 1-2 interakciách sa stratí; riešenie: všetky testy v jednom bash volaní.
+- **Dev server zomiera medzi bash volaniami** — bash tool zabíja child procesy; treba reštartovať v každom testovacom volaní.
+- **Zdieľaný link** — prijímač neimplementovaný (aplikácia nečíta `?obs=` parameter); treba pridať parse logiku.
+- **Escape handler** — pridaný len pre otvorené modály; OnboardingOverlay zatváraný cez Skip/Escape už existuje.
+- **Responsive** — len padding/gap zmenšené; controls panel sa skrýva na mobiloch (lg:grid-cols-[1fr_360px]).
+
+### Priority recommendations for next phase (fáza 11)
+1. **Parse zdieľaného linku** — pri otvorení `?obs=` parameter dekódovať a zobraziť pozorovania.
+2. **Satelity (ISS)** — TLE dáta z celestrak.org + satellite.js pre real-time pozície.
+3. **Planetárne ephemeris** — reálny výpočet polohy planét (astronomy-engine).
+4. **Notifikácie preletov** — upozornenie keď ISS preletí nad obzorom.
+5. **City search** — vyhľadávanie miest pre polohu (cez geocoding API).
+6. **PWA support** — Service Worker pre offline fungovanie.
+7. **Fullscreen mode** — tlačidlo pre fullscreen sky map.
+8. **Print friendly** — tlačiteľná verzia pozorovaní.

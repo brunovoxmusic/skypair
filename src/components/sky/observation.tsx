@@ -37,6 +37,7 @@ import {
   History,
   Save,
   X,
+  Share2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -371,6 +372,19 @@ export function Observation(props: ObservationProps) {
   // Observation history (localStorage)
   const { history, saveSession, deleteEntry, clearAll: clearHistory } = useObservationHistory()
   const [showHistory, setShowHistory] = useState(false)
+  // Close History modal on Escape
+  useEffect(() => {
+    if (!showHistory) return
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        setShowHistory(false)
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [showHistory])
+
   const handleSaveToHistory = useCallback(() => {
     if (events.length === 0) {
       addChat({ id: 'hist-err-' + Date.now(), text: 'Žiadne pozorovania na uloženie.', from: 'system', at: Date.now() })
@@ -387,10 +401,36 @@ export function Observation(props: ObservationProps) {
     addChat({ id: 'hist-ok-' + Date.now(), text: `Pozorovania uložené do histórie (${events.length} udalostí).`, from: 'system', at: Date.now() })
   }, [events, code, meteorCount, saveSession, addChat])
 
+  const handleShareLink = useCallback(() => {
+    if (events.length === 0) return
+    const data = {
+      v: 1,
+      code,
+      date: new Date().toISOString(),
+      location: { lat: view.lat, lng: view.lng },
+      meteorCount,
+      events: events.map((e) => ({
+        type: e.type,
+        time: new Date(e.at).toISOString(),
+        label: e.label || null,
+      })),
+    }
+    try {
+      const encoded = btoa(encodeURIComponent(JSON.stringify(data)))
+      const url = `${window.location.origin}/?obs=${encoded}`
+      navigator.clipboard?.writeText(url).then(
+        () => addChat({ id: 'share-ok-' + Date.now(), text: 'Zdieľateľný link skopírovaný do schránky.', from: 'system', at: Date.now() }),
+        () => addChat({ id: 'share-err-' + Date.now(), text: 'Nepodarilo sa skopírovať link.', from: 'system', at: Date.now() }),
+      )
+    } catch (e) {
+      addChat({ id: 'share-err-' + Date.now(), text: 'Chyba pri generovaní linku.', from: 'system', at: Date.now() })
+    }
+  }, [events, code, view.lat, view.lng, meteorCount, addChat])
+
   const pcConnected = pcState === 'connected'
 
   return (
-    <div className={`min-h-[calc(100vh-3.5rem)] p-3 sm:p-4 grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-3 sm:gap-4 theme-transition ${view.redLight ? 'red-light-mode' : ''}`}>
+    <div className={`min-h-[calc(100vh-3.5rem)] p-2 sm:p-3 md:p-4 grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-2 sm:gap-3 md:gap-4 theme-transition ${view.redLight ? 'red-light-mode' : ''}`}>
       {/* Onboarding overlay for new users */}
       <OnboardingOverlay />
       {/* LEFT: Sky map + video */}
@@ -878,6 +918,9 @@ export function Observation(props: ObservationProps) {
                 </Button>
                 <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handleSaveToHistory} title="Uložiť do histórie" disabled={events.length === 0}>
                   <Save className="w-3.5 h-3.5" />
+                </Button>
+                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handleShareLink} title="Zdieľať ako link" disabled={events.length === 0}>
+                  <Share2 className="w-3.5 h-3.5" />
                 </Button>
                 <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setShowHistory(true)} title="Zobraziť históriu">
                   <History className="w-3.5 h-3.5" />

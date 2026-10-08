@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, HelpCircle, ChevronDown, MousePointerClick, Search, Camera, Sparkles, Keyboard, Flame, Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -52,6 +52,19 @@ const FAQ_ITEMS: FaqItem[] = [
 export function HelpPanel() {
   const [open, setOpen] = useState(false)
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null)
+
+  // Close on Escape
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        setOpen(false)
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [open])
 
   return (
     <>
