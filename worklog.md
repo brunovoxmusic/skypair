@@ -681,3 +681,44 @@
 6. **Zdieľanie skrátené** — použíť URL shortener pre dlhé zdieľané linky.
 7. **Online geocoding** — pre mestá mimo offline zoznamu.
 8. **Galaxy/cluster rendering** — vylepšená vizualizácia pre deep-sky objekty.
+
+---
+
+## Fáza 13 — Fix 502 Bad Gateway (dev server zomieral)
+
+### Current project status (po fixe)
+- **Aplikácia plne funkčná, lint čistý.**
+- QA cez agent-browser potvrdilo: gateway (port 81) vracia 200, landing page sa zobrazí, host flow funguje, observation screen s sky map (309 bright + 1313 medium pixelov).
+
+### Problem diagnosed
+- **502 Bad Gateway** — dev server (port 3000) zomieral medzi bash volaniami, pretože bash tool zabíja child procesy pri ukončení volania.
+- `nohup setsid ... & disown` nestačilo — proces bol stále v rovnakej session group.
+- Watchdog script tiež zomieral spolu so shellom.
+
+### Fix applied
+- Použitý `setsid -f` (fork) pre vytvorenie úplne novej session, ktorá prežije ukončenie rodičovského shellu.
+- Príkaz: `setsid -f bash -c 'cd /home/z/my-project && exec node_modules/.bin/next dev -p 3000' >>/home/z/my-project/dev.log 2>&1 &`
+- Signaling service rovnako reštartovaný.
+
+### Verification results (agent-browser)
+- ✅ Landing page: H1 "SkyPair", "Vytvoriť reláciu" + "Pripojiť sa" buttons cez gateway (port 81)
+- ✅ Host flow: kód "2KLN5E" vytvorený, onboarding skip funguje
+- ✅ Observation screen: sky map canvas (309 bright + 1313 medium pixelov), "Prepnúť fullscreen" button
+- ✅ Dev server (port 3000) → HTTP 200
+- ✅ Gateway (port 81) → HTTP 200
+- ✅ Signaling (port 3003) beží
+- ✅ Lint clean, no runtime errors
+
+### Unresolved issues / risks
+- **Server stále zomiera medzi bash volaniami** — `setsid -f` pomáha, ale nie 100%. Pre perzistentné spustenie by bol potrebný systemd service alebo Docker.
+- **Cron job (webDevReview)** — reštartuje servery pri každom spustení, takže aplikácia zostane funkčná.
+
+### Priority recommendations for next phase (fáza 14)
+1. **Satelity (ISS)** — TLE dáta z celestrak.org + satellite.js pre real-time pozície.
+2. **Planetárne ephemeris** — reálny výpočet polohy planét (astronomy-engine).
+3. **Notifikácie preletov** — upozornenie keď ISS preletí nad obzorom.
+4. **Service Worker** — pre skutočné offline PWA fungovanie.
+5. **Export do PDF** — rozšíriť print o PDF export cez knižnicu.
+6. **Online geocoding** — pre mestá mimo offline zoznamu.
+7. **Galaxy/cluster rendering** — vylepšená vizualizácia pre deep-sky objekty.
+8. **Compass calibration** — zobrazenie skutočného severu cez DeviceOrientation API.
