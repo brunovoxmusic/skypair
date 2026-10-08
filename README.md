@@ -60,6 +60,13 @@ Webová aplikácia na pozorovanie nočnej a dennej oblohy. Spárujte dve zariade
 
 ## 📦 Inštalácia
 
+### 1. Predpoklady
+
+- **Bun** (alebo Node.js 18+)
+- **Postgres databáza** — odporúčame [Neon](https://neon.tech) (bezplatný serverless Postgres) alebo [Vercel Postgres](https://vercel.com/docs/storage/vercel-postgres)
+
+### 2. Lokálne spustenie
+
 ```bash
 # Klonovať repozitár
 git clone https://github.com/brunovoxmusic/skypair.git
@@ -68,8 +75,12 @@ cd skypair
 # Nainštalovať závislosti (automaticky vygeneruje Prisma klienta)
 bun install
 
-# Rýchly setup — skopíruje .env.example a nastaví databázu
-bun run setup
+# Nastaviť environment
+cp .env.example .env
+# Upravte .env — vložte svoj Postgres connection string z Neon/Vercel
+
+# Push databázovej schémy do Postgresu
+bun run db:push
 
 # Spustiť signaling service (port 3003)
 cd mini-services/signaling
@@ -83,8 +94,29 @@ bun run dev
 
 Otvorte `http://localhost:3000` v prehliadači.
 
-> **Poznámka**: Ak sa zobrazí chyba `Environment variable not found: DATABASE_URL`,
-> spustite `bun run setup` alebo manuálne skopírujte `.env.example` do `.env`.
+### 3. Deploy na Vercel
+
+1. Importujte repozitár na [vercel.com](https://vercel.com/new)
+2. Pridajte Environment Variable:
+   - `DATABASE_URL` = váš Postgres connection string (z Neon alebo Vercel Postgres)
+3. Deploy — Vercel automaticky spustí `postinstall` (Prisma generate)
+4. Po deployi spustite `bun run db:push` lokálne pre vytvorenie tabuliek (alebo použite Vercel CLI)
+
+> **Poznámka**: Aplikácia používa **Postgres** (nie SQLite), pretože Vercel serverless funkcie majú read-only filesystem. SQLite nefunguje na Verceli.
+
+### 4. Získanie Postgres connection string
+
+#### Neon (odporúčané — bezplatné)
+1. Choďte na [neon.tech](https://neon.tech) a vytvorte účet
+2. Vytvorte nový projekt
+3. Skopírujte connection string z dashboardu (začína `postgresql://...`)
+4. Vložte ho do `.env` ako `DATABASE_URL`
+
+#### Vercel Postgres
+1. V Vercel dashboarde choďte na **Storage** → **Create Database**
+2. Vyberte **Postgres** a vytvorte
+3. Skopírujte `.env.local` hodnoty
+4. Pridajte ich ako Environment Variables v projekte
 
 ## 🚀 Použitie
 
